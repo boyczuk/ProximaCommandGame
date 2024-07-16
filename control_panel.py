@@ -1,24 +1,24 @@
 import tkinter as tk
 from game import command_queue
+import threading
 
 def post_command(ship, command):
     command_queue.put((ship, command))
 
-def control_panel():
+def create_control_panel(ship_name):
     root = tk.Tk()
-    root.title("Control Panel")
+    root.title(f"Control Panel - {ship_name}")
 
-    tk.Button(root, text="Ship 1 Up", command=lambda: post_command("Enterprise", "UP")).pack()
-    tk.Button(root, text="Ship 1 Down", command=lambda: post_command("Enterprise", "DOWN")).pack()
-    tk.Button(root, text="Ship 1 Left", command=lambda: post_command("Enterprise", "LEFT")).pack()
-    tk.Button(root, text="Ship 1 Right", command=lambda: post_command("Enterprise", "RIGHT")).pack()
-
-    tk.Button(root, text="Ship 2 Up", command=lambda: post_command("Voyager", "UP")).pack()
-    tk.Button(root, text="Ship 2 Down", command=lambda: post_command("Voyager", "DOWN")).pack()
-    tk.Button(root, text="Ship 2 Left", command=lambda: post_command("Voyager", "LEFT")).pack()
-    tk.Button(root, text="Ship 2 Right", command=lambda: post_command("Voyager", "RIGHT")).pack()
+    tk.Button(root, text=f"{ship_name} Up", command=lambda: post_command(ship_name, "UP")).pack()
+    tk.Button(root, text=f"{ship_name} Down", command=lambda: post_command(ship_name, "DOWN")).pack()
+    tk.Button(root, text=f"{ship_name} Left", command=lambda: post_command(ship_name, "LEFT")).pack()
+    tk.Button(root, text=f"{ship_name} Right", command=lambda: post_command(ship_name, "RIGHT")).pack()
 
     root.mainloop()
 
+def start_control_panels():
+    threading.Thread(target=create_control_panel, args=("Enterprise",)).start()
+    threading.Thread(target=create_control_panel, args=("Voyager",)).start()
+
 if __name__ == "__main__":
-    control_panel()
+    start_control_panels()
