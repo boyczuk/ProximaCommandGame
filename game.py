@@ -1,6 +1,7 @@
 import pygame
 import sys
 from queue import Queue
+import math
 
 command_queue = Queue()
 
@@ -28,6 +29,9 @@ class Ship:
             self.position = new_position
             self.rect.update(self.position[0], self.position[1], 20, 20)
 
+    def distance_to(self, other_ship):
+        return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
+
 class Game:
     def __init__(self):
         self.ships = {}
@@ -36,12 +40,12 @@ class Game:
 
     def initialize_pygame(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((400, 300))  # Smaller map
         self.clock = pygame.time.Clock()
 
     def create_ships(self):
-        ship1 = Ship("Enterprise", "active", (400, 300), "NORTH", 10)
-        ship2 = Ship("Voyager", "active", (200, 150), "SOUTH", 10)
+        ship1 = Ship("Enterprise", "active", (200, 150), "NORTH", 5)  # Adjusted position and speed
+        ship2 = Ship("Voyager", "active", (100, 75), "SOUTH", 5)     # Adjusted position and speed
         self.add_ship(ship1)
         self.add_ship(ship2)
 
@@ -54,6 +58,14 @@ class Game:
             if other_ship != ship and other_ship.rect.colliderect(test_rect):
                 return False
         return True
+
+    def get_targetable_enemies(self, player_ship_name, radius):
+        targetable_enemies = []
+        player_ship = self.ships[player_ship_name]
+        for ship_name, ship in self.ships.items():
+            if ship_name != player_ship_name and player_ship.distance_to(ship) <= radius:
+                targetable_enemies.append(ship_name)
+        return targetable_enemies
 
     def run(self):
         while True:
