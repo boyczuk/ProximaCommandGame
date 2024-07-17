@@ -12,6 +12,7 @@ class Ship:
         self.position = position
         self.facing = facing
         self.speed = speed
+        self.health = 5
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
 
     def move(self, direction, game_instance):
@@ -31,6 +32,10 @@ class Ship:
 
     def distance_to(self, other_ship):
         return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
+
+    def decrease_health(self):
+        self.health -= 1
+        print(f"{self.name} has been hit! Health: {self.health}")
 
 class Game:
     def __init__(self):
@@ -77,6 +82,7 @@ class Game:
             self.screen.fill((10, 10, 40))
             for ship in self.ships.values():
                 pygame.draw.rect(self.screen, (0, 255, 0) if ship.name == "Enterprise" else (255, 0, 0), ship.rect)
+                self.display_health(ship)
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -85,4 +91,20 @@ class Game:
             ship_name, command = command_queue.get()
             ship = self.ships.get(ship_name)
             if ship:
-                ship.move(command, self)
+                if command == "FIRE":
+                    self.fire_weapon(ship)
+                else:
+                    ship.move(command, self)
+
+    def fire_weapon(self, attacking_ship):
+        # Implement logic to determine which ship is hit
+        # For simplicity, let's assume the first ship in the list is hit
+        for ship_name, ship in self.ships.items():
+            if ship_name != attacking_ship.name:
+                ship.decrease_health()
+                break
+
+    def display_health(self, ship):
+        font = pygame.font.Font(None, 36)
+        text = font.render(f"HP: {ship.health}", True, (255, 255, 255))
+        self.screen.blit(text, (ship.position[0], ship.position[1] - 20))

@@ -2,16 +2,17 @@ import tkinter as tk
 from game import command_queue, Game
 import threading
 
-game_instance = Game()  # Create an instance of the Game to access ship data
+game_instance = None  # This will be set in the main.py
 
 def post_command(ship, command):
     command_queue.put((ship, command))
 
 def update_target_list(ship_name, target_listbox, radius=100):
     target_listbox.delete(0, tk.END)
-    targetable_enemies = game_instance.get_targetable_enemies(ship_name, radius)
-    for enemy in targetable_enemies:
-        target_listbox.insert(tk.END, enemy)
+    if game_instance:
+        targetable_enemies = game_instance.get_targetable_enemies(ship_name, radius)
+        for enemy in targetable_enemies:
+            target_listbox.insert(tk.END, enemy)
 
 def create_control_panel(ship_name):
     root = tk.Tk()
