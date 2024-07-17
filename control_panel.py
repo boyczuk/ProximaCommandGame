@@ -1,5 +1,5 @@
 import tkinter as tk
-from game import command_queue, Game
+from game import command_queue
 import threading
 
 game_instance = None  # This will be set in the main.py
@@ -18,10 +18,9 @@ def create_control_panel(ship_name):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
-    tk.Button(root, text=f"{ship_name} Up", command=lambda: post_command(ship_name, "UP")).pack()
-    tk.Button(root, text=f"{ship_name} Down", command=lambda: post_command(ship_name, "DOWN")).pack()
-    tk.Button(root, text=f"{ship_name} Left", command=lambda: post_command(ship_name, "LEFT")).pack()
-    tk.Button(root, text=f"{ship_name} Right", command=lambda: post_command(ship_name, "RIGHT")).pack()
+    tk.Button(root, text="Stop", command=lambda: post_command(ship_name, "STOP")).pack()
+    tk.Button(root, text="Partial Speed", command=lambda: post_command(ship_name, "PARTIAL")).pack()
+    tk.Button(root, text="Full Speed", command=lambda: post_command(ship_name, "FULL")).pack()
 
     target_listbox = tk.Listbox(root)
     target_listbox.pack()
