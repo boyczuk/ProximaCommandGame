@@ -67,7 +67,7 @@ def create_control_panel(ship_name):
 
     def update_shield_button():
         ship = game_instance.ships[ship_name]
-        if ship.shield_cooldown:
+        if ship.shield_cooldown or ship.deactivated:
             shield_button.config(state="disabled")
         else:
             shield_button.config(state="normal")
@@ -76,11 +76,28 @@ def create_control_panel(ship_name):
     root.after(1000, update_shield_button)
 
     # Helm section
-    tk.Button(helm_frame, text="Stop", command=lambda: post_command(ship_name, "STOP")).pack()
-    tk.Button(helm_frame, text="Partial Speed", command=lambda: post_command(ship_name, "PARTIAL")).pack()
-    tk.Button(helm_frame, text="Full Speed", command=lambda: post_command(ship_name, "FULL")).pack()
-    tk.Button(helm_frame, text="Turn Left", command=lambda: post_command(ship_name, "LEFT")).pack()
-    tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT")).pack()
+    stop_button = tk.Button(helm_frame, text="Stop", command=lambda: post_command(ship_name, "STOP"))
+    stop_button.pack()
+    partial_speed_button = tk.Button(helm_frame, text="Partial Speed", command=lambda: post_command(ship_name, "PARTIAL"))
+    partial_speed_button.pack()
+    full_speed_button = tk.Button(helm_frame, text="Full Speed", command=lambda: post_command(ship_name, "FULL"))
+    full_speed_button.pack()
+    left_button = tk.Button(helm_frame, text="Turn Left", command=lambda: post_command(ship_name, "LEFT"))
+    left_button.pack()
+    right_button = tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT"))
+    right_button.pack()
+
+    def update_helm_buttons():
+        ship = game_instance.ships[ship_name]
+        state = "normal" if not ship.deactivated else "disabled"
+        stop_button.config(state=state)
+        partial_speed_button.config(state=state)
+        full_speed_button.config(state=state)
+        left_button.config(state=state)
+        right_button.config(state=state)
+        root.after(1000, update_helm_buttons)
+
+    root.after(1000, update_helm_buttons)
 
     # Engineering section (Placeholder for future implementation)
     tk.Label(engineering_frame, text="Engineering controls coming soon...").pack()

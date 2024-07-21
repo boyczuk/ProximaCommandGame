@@ -20,8 +20,11 @@ class Ship:
         self.shield_cooldown = False  # Indicates if shields are in cooldown
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.selected = False  # Indicates if the ship is selected
+        self.deactivated = False  # Indicates if the ship is deactivated
 
     def move(self, screen_width, screen_height):
+        if self.deactivated:
+            return
         if self.speed > 0:
             rad = math.radians(self.facing)
             dx = self.max_speed * self.speed * math.cos(rad) / 5
@@ -44,11 +47,17 @@ class Ship:
         else:
             self.health -= 1
             print(f"{self.name} has been hit! Health: {self.health}")
+            if self.health <= 0:
+                self.deactivate()
 
     def change_direction(self, angle):
+        if self.deactivated:
+            return
         self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
+        if self.deactivated:
+            return
         current_time = time.time()
         if not self.shield_cooldown:
             if not self.shields_up:
@@ -66,9 +75,18 @@ class Ship:
             if current_time - self.shield_raised_time >= 8:  # Cooldown period of 5 seconds after shields go down
                 self.shield_cooldown = False
 
+    def deactivate(self):
+        self.deactivated = True
+        self.speed = 0
+        self.shields_up = False
+        print(f"{self.name} has been deactivated!")
+
     def draw(self, screen):
         # Draw the ship rectangle
-        color = (0, 255, 0) if self.team == "green" else (0, 0, 255)
+        if self.deactivated:
+            color = (100, 100, 100)  # Grey color for deactivated ship
+        else:
+            color = (0, 255, 0) if self.team == "green" else (0, 0, 255)
         pygame.draw.rect(screen, color, self.rect)
 
         # Draw the facing triangle
@@ -148,7 +166,7 @@ class Game:
         while not command_queue.empty():
             ship_name, command = command_queue.get()
             ship = self.ships.get(ship_name)
-            if ship:
+            if ship and not ship.deactivated:  # Ignore commands if the ship is deactivated
                 if command.startswith("FIRE"):
                     _, target_name = command.split()
                     self.fire_weapon(ship, target_name)
