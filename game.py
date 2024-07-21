@@ -3,6 +3,8 @@ import sys
 from queue import Queue
 import math
 import time
+import random
+import threading
 
 command_queue = Queue()
 
@@ -21,9 +23,11 @@ class Ship:
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.selected = False  # Indicates if the ship is selected
         self.deactivated = False  # Indicates if the ship is deactivated
+        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False}  # Disabled consoles
+        self.repairing = False  # Indicates if a repair is in progress
 
     def move(self, screen_width, screen_height):
-        if self.deactivated:
+        if self.deactivated or self.disabled_consoles["helm"]:
             return
         if self.speed > 0:
             rad = math.radians(self.facing)
@@ -49,14 +53,16 @@ class Ship:
             print(f"{self.name} has been hit! Health: {self.health}")
             if self.health <= 0:
                 self.deactivate()
+            else:
+                self.disable_random_console()
 
     def change_direction(self, angle):
-        if self.deactivated:
+        if self.deactivated or self.disabled_consoles["helm"]:
             return
         self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
-        if self.deactivated:
+        if self.deactivated or self.disabled_consoles["shields"]:
             return
         current_time = time.time()
         if not self.shield_cooldown:
@@ -74,6 +80,22 @@ class Ship:
         if self.shield_cooldown and not self.shields_up:
             if current_time - self.shield_raised_time >= 8:  # Cooldown period of 5 seconds after shields go down
                 self.shield_cooldown = False
+
+    def disable_random_console(self):
+        if not self.repairing:
+            console = random.choice(["helm", "shields", "weapons", "none"])
+            if console != "none":
+                self.disabled_consoles[console] = True
+                print(f"{self.name} had its {console} console disabled!")
+
+    def repair_console(self, console):
+        if self.disabled_consoles[console] and not self.repairing:
+            self.repairing = True
+            print(f"Repairing {console} console on {self.name}...")
+            time.sleep(3)
+            self.disabled_consoles[console] = False
+            self.repairing = False
+            print(f"{console} console on {self.name} has been repaired!")
 
     def deactivate(self):
         self.deactivated = True
@@ -179,6 +201,9 @@ class Game:
                 elif command.startswith("SELECT"):
                     _, target_name = command.split()
                     self.select_target(target_name)
+                elif command.startswith("REPAIR"):
+                    _, console = command.split()
+                    threading.Thread(target=ship.repair_console, args=(console,)).start()
 
     def adjust_speed(self, ship, command):
         if command == "STOP":
@@ -195,6 +220,9 @@ class Game:
             ship.change_direction(-15)  # Turn right by 15 degrees
 
     def fire_weapon(self, attacking_ship, target_name):
+        if attacking_ship.disabled_consoles["weapons"]:
+            print(f"{attacking_ship.name}'s weapons are disabled!")
+            return
         if target_name in self.ships:
             target_ship = self.ships[target_name]
             if attacking_ship.distance_to(target_ship) <= 100:  # Assuming 100 is the max range

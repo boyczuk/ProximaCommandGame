@@ -67,7 +67,7 @@ def create_control_panel(ship_name):
 
     def update_shield_button():
         ship = game_instance.ships[ship_name]
-        if ship.shield_cooldown or ship.deactivated:
+        if ship.shield_cooldown or ship.deactivated or ship.disabled_consoles["shields"]:
             shield_button.config(state="disabled")
         else:
             shield_button.config(state="normal")
@@ -89,7 +89,7 @@ def create_control_panel(ship_name):
 
     def update_helm_buttons():
         ship = game_instance.ships[ship_name]
-        state = "normal" if not ship.deactivated else "disabled"
+        state = "normal" if not ship.deactivated and not ship.disabled_consoles["helm"] else "disabled"
         stop_button.config(state=state)
         partial_speed_button.config(state=state)
         full_speed_button.config(state=state)
@@ -99,8 +99,13 @@ def create_control_panel(ship_name):
 
     root.after(1000, update_helm_buttons)
 
-    # Engineering section (Placeholder for future implementation)
-    tk.Label(engineering_frame, text="Engineering controls coming soon...").pack()
+    # Engineering section
+    def repair_console(console):
+        post_command(ship_name, f"REPAIR {console}")
+
+    tk.Button(engineering_frame, text="Repair Helm", command=lambda: repair_console("helm")).pack()
+    tk.Button(engineering_frame, text="Repair Shields", command=lambda: repair_console("shields")).pack()
+    tk.Button(engineering_frame, text="Repair Weapons", command=lambda: repair_console("weapons")).pack()
 
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
