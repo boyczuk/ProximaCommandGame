@@ -29,13 +29,18 @@ def create_control_panel(ship_name):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
-    tk.Button(root, text="Stop", command=lambda: post_command(ship_name, "STOP")).pack()
-    tk.Button(root, text="Partial Speed", command=lambda: post_command(ship_name, "PARTIAL")).pack()
-    tk.Button(root, text="Full Speed", command=lambda: post_command(ship_name, "FULL")).pack()
-    tk.Button(root, text="Turn Left", command=lambda: post_command(ship_name, "LEFT")).pack()
-    tk.Button(root, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT")).pack()
+    # Create frames for each section
+    weapons_frame = tk.LabelFrame(root, text="Weapons")
+    weapons_frame.pack(fill="both", expand="yes")
+    science_frame = tk.LabelFrame(root, text="Science")
+    science_frame.pack(fill="both", expand="yes")
+    helm_frame = tk.LabelFrame(root, text="Helm")
+    helm_frame.pack(fill="both", expand="yes")
+    engineering_frame = tk.LabelFrame(root, text="Engineering")
+    engineering_frame.pack(fill="both", expand="yes")
 
-    target_listbox = tk.Listbox(root)
+    # Weapons section
+    target_listbox = tk.Listbox(weapons_frame)
     target_listbox.pack()
 
     selected_target = ""
@@ -54,7 +59,20 @@ def create_control_panel(ship_name):
         if selected_target and " (target unavailable)" not in selected_target:
             post_command(ship_name, f"FIRE {selected_target}")
 
-    tk.Button(root, text="Fire", command=fire_command).pack()
+    tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
+
+    # Science section
+    tk.Button(science_frame, text="Raise/Lower Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS")).pack()
+
+    # Helm section
+    tk.Button(helm_frame, text="Stop", command=lambda: post_command(ship_name, "STOP")).pack()
+    tk.Button(helm_frame, text="Partial Speed", command=lambda: post_command(ship_name, "PARTIAL")).pack()
+    tk.Button(helm_frame, text="Full Speed", command=lambda: post_command(ship_name, "FULL")).pack()
+    tk.Button(helm_frame, text="Turn Left", command=lambda: post_command(ship_name, "LEFT")).pack()
+    tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT")).pack()
+
+    # Engineering section (Placeholder for future implementation)
+    tk.Label(engineering_frame, text="Engineering controls coming soon...").pack()
 
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)

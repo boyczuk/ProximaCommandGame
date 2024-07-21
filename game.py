@@ -14,6 +14,7 @@ class Ship:
         self.speed = speed  # Current speed (0 = Stop, 1 = Partial, 2 = Full)
         self.max_speed = 2  # Maximum speed, adjusted to be slower
         self.health = 5
+        self.shields_up = False  # Indicates if shields are raised
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.selected = False  # Indicates if the ship is selected
 
@@ -35,11 +36,17 @@ class Ship:
         return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
 
     def decrease_health(self):
-        self.health -= 1
-        print(f"{self.name} has been hit! Health: {self.health}")
+        if self.shields_up:
+            print(f"{self.name} was hit but shields absorbed the damage!")
+        else:
+            self.health -= 1
+            print(f"{self.name} has been hit! Health: {self.health}")
 
     def change_direction(self, angle):
         self.facing = (self.facing + angle) % 360
+
+    def toggle_shields(self):
+        self.shields_up = not self.shields_up
 
     def draw(self, screen):
         # Draw the ship rectangle
@@ -56,6 +63,10 @@ class Ship:
         # Draw selection circle if selected
         if self.selected:
             pygame.draw.circle(screen, (255, 0, 0), self.rect.center, 25, 2)
+
+        # Draw shields if raised
+        if self.shields_up:
+            pygame.draw.circle(screen, (0, 0, 255), self.rect.center, 25, 2)
 
 class Game:
     def __init__(self):
@@ -126,6 +137,8 @@ class Game:
                     self.adjust_speed(ship, command)
                 elif command in ("LEFT", "RIGHT"):
                     self.change_direction(ship, command)
+                elif command == "TOGGLE_SHIELDS":
+                    ship.toggle_shields()
                 elif command.startswith("SELECT"):
                     _, target_name = command.split()
                     self.select_target(target_name)
