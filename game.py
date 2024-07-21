@@ -2,6 +2,7 @@ import pygame
 import sys
 from queue import Queue
 import math
+import time
 
 command_queue = Queue()
 
@@ -15,6 +16,8 @@ class Ship:
         self.max_speed = 2  # Maximum speed, adjusted to be slower
         self.health = 5
         self.shields_up = False  # Indicates if shields are raised
+        self.shield_raised_time = 0  # Timestamp when shields were raised
+        self.shield_cooldown = False  # Indicates if shields are in cooldown
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.selected = False  # Indicates if the ship is selected
 
@@ -46,7 +49,22 @@ class Ship:
         self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
-        self.shields_up = not self.shields_up
+        current_time = time.time()
+        if not self.shield_cooldown:
+            if not self.shields_up:
+                self.shields_up = True
+                self.shield_raised_time = current_time
+                self.shield_cooldown = True  # Start cooldown
+            else:
+                self.shields_up = False
+
+    def update_shields(self):
+        current_time = time.time()
+        if self.shields_up and current_time - self.shield_raised_time >= 3:  # Shields last for 3 seconds
+            self.shields_up = False
+        if self.shield_cooldown and not self.shields_up:
+            if current_time - self.shield_raised_time >= 8:  # Cooldown period of 5 seconds after shields go down
+                self.shield_cooldown = False
 
     def draw(self, screen):
         # Draw the ship rectangle
@@ -120,6 +138,7 @@ class Game:
             self.screen.fill((10, 10, 40))
             for ship in self.ships.values():
                 ship.move(self.screen_width, self.screen_height)  # Move the ship based on its speed and direction
+                ship.update_shields()  # Update shields status
                 ship.draw(self.screen)  # Draw the ship with its facing direction
                 self.display_health(ship)
             pygame.display.flip()

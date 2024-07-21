@@ -62,7 +62,18 @@ def create_control_panel(ship_name):
     tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
 
     # Science section
-    tk.Button(science_frame, text="Raise/Lower Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS")).pack()
+    shield_button = tk.Button(science_frame, text="Raise/Lower Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
+    shield_button.pack()
+
+    def update_shield_button():
+        ship = game_instance.ships[ship_name]
+        if ship.shield_cooldown:
+            shield_button.config(state="disabled")
+        else:
+            shield_button.config(state="normal")
+        root.after(1000, update_shield_button)
+
+    root.after(1000, update_shield_button)
 
     # Helm section
     tk.Button(helm_frame, text="Stop", command=lambda: post_command(ship_name, "STOP")).pack()
