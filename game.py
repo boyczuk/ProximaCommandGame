@@ -8,6 +8,23 @@ import threading
 
 command_queue = Queue()
 
+class PowerUp:
+    def __init__(self, type, position):
+        self.type = type
+        self.position = position
+        self.rect = pygame.Rect(position[0], position[1], 20,20)
+        self.collected = False
+
+    def draw(self, screen):
+        if self.type == "power_cell":
+            color = (255, 255, 0)
+        elif self.type == "torpedo":
+            color = (255, 0, 0)
+        elif self.type == "engineer":
+            color = (0, 255, 0)
+        pygame.draw.rect(screen, color, self.rect)
+
+
 class Ship:
     def __init__(self, name, team, position, facing, speed):
         self.name = name
@@ -18,17 +35,19 @@ class Ship:
         self.max_speed = 2
         self.health = 5
         self.shields_up = False
-        self.shield_raised_time = 0 
-        self.shield_cooldown = False 
+        self.shield_raised_time = 0
+        self.shield_cooldown = False
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
-        self.selected = False 
-        self.deactivated = False 
-        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False} 
+        self.selected = False
+        self.deactivated = False
+        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False}
         self.repairing = False
-        self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0} 
-        self.power = 100 
-        self.max_power = 100  
-        self.power_cooldown = False  
+        self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0}
+        self.power = 100
+        self.max_power = 100
+        self.power_cooldown = False
+        self.torpedo_powerup = False  # For torpedo power-up
+        self.repair_rate_multiplier = 1
 
     def move(self, screen_width, screen_height):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -51,11 +70,11 @@ class Ship:
     def distance_to(self, other_ship):
         return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
 
-    def decrease_health(self):
+    def decrease_health(self, damage):
         if self.shields_up:
             print(f"{self.name} was hit but shields absorbed the damage!")
         else:
-            self.health -= 1
+            self.health -= damage
             print(f"{self.name} has been hit! Health: {self.health}")
             if self.health <= 0:
                 self.deactivate()
@@ -102,7 +121,8 @@ class Ship:
             self.repairing = True
             print(f"Repairing {console} console on {self.name}...")
             if self.consume_power(5):
-                time.sleep(3)
+                repair_time = 3 / self.repair_rate_multiplier  # Adjust repair time based on multiplier
+                time.sleep(repair_time)
                 self.disabled_consoles[console] = False
                 self.health += 1
                 self.repair_cooldowns[console] = current_time
@@ -111,6 +131,13 @@ class Ship:
             else:
                 self.repairing = False
                 print(f"Not enough power to repair {console} console on {self.name}.")
+
+    def fire_weapon(self, target_ship):
+        if self.torpedo_powerup:
+            target_ship.decrease_health(2)  # Deal 2 damage instead of 1
+            self.torpedo_powerup = False
+        else:
+            target_ship.decrease_health(1)
 
     def restore_power(self):
         if not self.power_cooldown:
@@ -159,8 +186,10 @@ class Game:
         self.ships = {}
         self.screen_width = 400
         self.screen_height = 300
+        self.powerups = []
         self.initialize_pygame()
         self.create_ships()
+        self.create_powerups()
         self.selected_target = None
 
     def initialize_pygame(self):
@@ -180,6 +209,31 @@ class Game:
 
     def add_ship(self, ship):
         self.ships[ship.name] = ship
+
+    def create_powerups(self):
+        powerup_types = ["power_cell", "torpedo", "engineer"]
+        num_powerups = random.randint(1,5)
+        for _ in range(num_powerups):
+            powerup_type = random.choice(powerup_types)
+            position = (random.randint(0, self.screen_width - 20), random.randint(0, self.screen_height - 20))
+            powerup = PowerUp(powerup_type, position)
+            self.powerups.append(powerup)
+
+    def check_powerup_collisions(self):
+        for ship in self.ships.values():
+            for powerup in self.powerups:
+                if not powerup.collected and ship.rect.colliderect(powerup.rect):
+                    self.apply_powerup_effect(ship, powerup)
+                    powerup.collected = True
+
+    def apply_powerup_effect(self, ship, powerup):
+        if powerup.type == "power_cell":
+            ship.max_power = 150
+            ship.power = 150
+        elif powerup.type == "torpedo":
+            ship.torpedo_powerup = True
+        elif powerup.type == "engineer":
+            ship.repair_rate_multiplier = 2
 
     def is_valid_move(self, ship, new_position):
         test_rect = pygame.Rect(new_position[0], new_position[1], 20, 20)
@@ -209,6 +263,10 @@ class Game:
                 ship.update_shields()  
                 ship.draw(self.screen) 
                 self.display_health(ship)
+            for powerup in self.powerups:
+                if not powerup.collected:
+                    powerup.draw(self.screen)
+            self.check_powerup_collisions()
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -257,7 +315,7 @@ class Game:
             if attacking_ship.consume_power(2):
                 target_ship = self.ships[target_name]
                 if attacking_ship.distance_to(target_ship) <= 100:
-                    target_ship.decrease_health()
+                    attacking_ship.fire_weapon(target_ship)
                 else:
                     print(f"Target {target_name} is out of range.")
             else:
