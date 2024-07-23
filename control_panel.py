@@ -107,6 +107,22 @@ def create_control_panel(ship_name):
     tk.Button(engineering_frame, text="Repair Shields", command=lambda: repair_console("shields")).pack()
     tk.Button(engineering_frame, text="Repair Weapons", command=lambda: repair_console("weapons")).pack()
 
+    def restore_power():
+        post_command(ship_name, "RESTORE_POWER")
+
+    restore_power_button = tk.Button(engineering_frame, text="Restore Power", command=restore_power)
+    restore_power_button.pack()
+
+    def update_restore_power_button():
+        ship = game_instance.ships[ship_name]
+        if ship.power_cooldown:
+            restore_power_button.config(state="disabled")
+        else:
+            restore_power_button.config(state="normal")
+        root.after(1000, update_restore_power_button)
+
+    root.after(1000, update_restore_power_button)
+
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
         root.after(1000, update_targets)  # Schedule next update

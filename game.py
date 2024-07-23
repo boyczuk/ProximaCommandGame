@@ -25,22 +25,28 @@ class Ship:
         self.deactivated = False  # Indicates if the ship is deactivated
         self.disabled_consoles = {"helm": False, "shields": False, "weapons": False}  # Disabled consoles
         self.repairing = False  # Indicates if a repair is in progress
+        self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0}  # Cooldown times for repairs
+        self.power = 100  # Initial power level
+        self.max_power = 100  # Maximum power level
+        self.power_cooldown = False  # Indicates if power restoration is on cooldown
 
     def move(self, screen_width, screen_height):
-        if self.deactivated or self.disabled_consoles["helm"]:
+        if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
             return
         if self.speed > 0:
-            rad = math.radians(self.facing)
-            dx = self.max_speed * self.speed * math.cos(rad) / 5
-            dy = -self.max_speed * math.sin(rad) * self.speed / 5  # Negative because Pygame's y-axis is inverted
-            new_x = self.position[0] + dx
-            new_y = self.position[1] + dy
+            power_cost = 0.01 if self.speed == 1 else 0.02
+            if self.consume_power(power_cost):
+                rad = math.radians(self.facing)
+                dx = self.max_speed * self.speed * math.cos(rad) / 5
+                dy = -self.max_speed * math.sin(rad) * self.speed / 5  # Negative because Pygame's y-axis is inverted
+                new_x = self.position[0] + dx
+                new_y = self.position[1] + dy
 
-            # Boundary check
-            if 0 <= new_x <= screen_width - 20 and 0 <= new_y <= screen_height - 20:
-                self.position[0] = new_x
-                self.position[1] = new_y
-                self.rect.update(self.position[0], self.position[1], 20, 20)
+                # Boundary check
+                if 0 <= new_x <= screen_width - 20 and 0 <= new_y <= screen_height - 20:
+                    self.position[0] = new_x
+                    self.position[1] = new_y
+                    self.rect.update(self.position[0], self.position[1], 20, 20)
 
     def distance_to(self, other_ship):
         return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
@@ -57,19 +63,21 @@ class Ship:
                 self.disable_random_console()
 
     def change_direction(self, angle):
-        if self.deactivated or self.disabled_consoles["helm"]:
+        if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
             return
-        self.facing = (self.facing + angle) % 360
+        if self.consume_power(1):
+            self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
-        if self.deactivated or self.disabled_consoles["shields"]:
+        if self.deactivated or self.disabled_consoles["shields"] or self.power <= 0:
             return
         current_time = time.time()
         if not self.shield_cooldown:
             if not self.shields_up:
-                self.shields_up = True
-                self.shield_raised_time = current_time
-                self.shield_cooldown = True  # Start cooldown
+                if self.consume_power(3):
+                    self.shields_up = True
+                    self.shield_raised_time = current_time
+                    self.shield_cooldown = True  # Start cooldown
             else:
                 self.shields_up = False
 
@@ -89,13 +97,35 @@ class Ship:
                 print(f"{self.name} had its {console} console disabled!")
 
     def repair_console(self, console):
-        if self.disabled_consoles[console] and not self.repairing:
+        current_time = time.time()
+        if self.disabled_consoles[console] and not self.repairing and current_time - self.repair_cooldowns[console] >= 60:
             self.repairing = True
             print(f"Repairing {console} console on {self.name}...")
-            time.sleep(3)
-            self.disabled_consoles[console] = False
-            self.repairing = False
-            print(f"{console} console on {self.name} has been repaired!")
+            if self.consume_power(5):
+                time.sleep(3)
+                self.disabled_consoles[console] = False
+                self.health += 1
+                self.repair_cooldowns[console] = current_time
+                self.repairing = False
+                print(f"{console} console on {self.name} has been repaired and health restored!")
+            else:
+                self.repairing = False
+                print(f"Not enough power to repair {console} console on {self.name}.")
+
+    def restore_power(self):
+        if not self.power_cooldown:
+            print(f"Restoring power on {self.name}...")
+            self.power = self.max_power
+            self.power_cooldown = True
+            time.sleep(5)
+            self.power_cooldown = False
+            print(f"Power restored on {self.name}.")
+
+    def consume_power(self, amount):
+        if self.power >= amount:
+            self.power -= amount
+            return True
+        return False
 
     def deactivate(self):
         self.deactivated = True
@@ -204,6 +234,8 @@ class Game:
                 elif command.startswith("REPAIR"):
                     _, console = command.split()
                     threading.Thread(target=ship.repair_console, args=(console,)).start()
+                elif command == "RESTORE_POWER":
+                    threading.Thread(target=ship.restore_power).start()
 
     def adjust_speed(self, ship, command):
         if command == "STOP":
@@ -220,15 +252,18 @@ class Game:
             ship.change_direction(-15)  # Turn right by 15 degrees
 
     def fire_weapon(self, attacking_ship, target_name):
-        if attacking_ship.disabled_consoles["weapons"]:
-            print(f"{attacking_ship.name}'s weapons are disabled!")
+        if attacking_ship.disabled_consoles["weapons"] or attacking_ship.power <= 0:
+            print(f"{attacking_ship.name}'s weapons are disabled or no power!")
             return
         if target_name in self.ships:
-            target_ship = self.ships[target_name]
-            if attacking_ship.distance_to(target_ship) <= 100:  # Assuming 100 is the max range
-                target_ship.decrease_health()
+            if attacking_ship.consume_power(2):
+                target_ship = self.ships[target_name]
+                if attacking_ship.distance_to(target_ship) <= 100:  # Assuming 100 is the max range
+                    target_ship.decrease_health()
+                else:
+                    print(f"Target {target_name} is out of range.")
             else:
-                print(f"Target {target_name} is out of range.")
+                print(f"Not enough power to fire weapons on {attacking_ship.name}.")
 
     def select_target(self, target_name):
         if self.selected_target:
@@ -241,3 +276,8 @@ class Game:
         font = pygame.font.Font(None, 36)
         text = font.render(f"HP: {ship.health}", True, (255, 255, 255))
         self.screen.blit(text, (ship.position[0], ship.position[1] - 20))
+
+        # Display power level
+        rounded_power = round(ship.power)
+        text = font.render(f"Power: {rounded_power}", True, (255, 255, 255))
+        self.screen.blit(text, (ship.position[0], ship.position[1] + 20))
