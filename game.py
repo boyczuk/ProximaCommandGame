@@ -13,22 +13,22 @@ class Ship:
         self.name = name
         self.team = team
         self.position = list(position)
-        self.facing = facing  # Facing direction in degrees (0 = East, 90 = North, 180 = West, 270 = South)
-        self.speed = speed  # Current speed (0 = Stop, 1 = Partial, 2 = Full)
-        self.max_speed = 2  # Maximum speed, adjusted to be slower
+        self.facing = facing
+        self.speed = speed
+        self.max_speed = 2
         self.health = 5
-        self.shields_up = False  # Indicates if shields are raised
-        self.shield_raised_time = 0  # Timestamp when shields were raised
-        self.shield_cooldown = False  # Indicates if shields are in cooldown
+        self.shields_up = False
+        self.shield_raised_time = 0 
+        self.shield_cooldown = False 
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
-        self.selected = False  # Indicates if the ship is selected
-        self.deactivated = False  # Indicates if the ship is deactivated
-        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False}  # Disabled consoles
-        self.repairing = False  # Indicates if a repair is in progress
-        self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0}  # Cooldown times for repairs
-        self.power = 100  # Initial power level
-        self.max_power = 100  # Maximum power level
-        self.power_cooldown = False  # Indicates if power restoration is on cooldown
+        self.selected = False 
+        self.deactivated = False 
+        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False} 
+        self.repairing = False
+        self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0} 
+        self.power = 100 
+        self.max_power = 100  
+        self.power_cooldown = False  
 
     def move(self, screen_width, screen_height):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -38,7 +38,7 @@ class Ship:
             if self.consume_power(power_cost):
                 rad = math.radians(self.facing)
                 dx = self.max_speed * self.speed * math.cos(rad) / 5
-                dy = -self.max_speed * math.sin(rad) * self.speed / 5  # Negative because Pygame's y-axis is inverted
+                dy = -self.max_speed * math.sin(rad) * self.speed / 5  # negative because Pygame's y-axis is inverted
                 new_x = self.position[0] + dx
                 new_y = self.position[1] + dy
 
@@ -77,16 +77,16 @@ class Ship:
                 if self.consume_power(3):
                     self.shields_up = True
                     self.shield_raised_time = current_time
-                    self.shield_cooldown = True  # Start cooldown
+                    self.shield_cooldown = True  
             else:
                 self.shields_up = False
 
     def update_shields(self):
         current_time = time.time()
-        if self.shields_up and current_time - self.shield_raised_time >= 3:  # Shields last for 3 seconds
+        if self.shields_up and current_time - self.shield_raised_time >= 3: 
             self.shields_up = False
         if self.shield_cooldown and not self.shields_up:
-            if current_time - self.shield_raised_time >= 8:  # Cooldown period of 5 seconds after shields go down
+            if current_time - self.shield_raised_time >= 8: 
                 self.shield_cooldown = False
 
     def disable_random_console(self):
@@ -134,25 +134,23 @@ class Ship:
         print(f"{self.name} has been deactivated!")
 
     def draw(self, screen):
-        # Draw the ship rectangle
         if self.deactivated:
-            color = (100, 100, 100)  # Grey color for deactivated ship
+            color = (100, 100, 100)  
         else:
             color = (0, 255, 0) if self.team == "green" else (0, 0, 255)
         pygame.draw.rect(screen, color, self.rect)
 
-        # Draw the facing triangle
+        # Draw the facing triangle 
+        # May change this because it feels weird
         rad = math.radians(self.facing)
         tip = (self.position[0] + 10 * math.cos(rad), self.position[1] - 10 * math.sin(rad))
         left = (self.position[0] + 5 * math.cos(rad + 2.5), self.position[1] - 5 * math.sin(rad + 2.5))
         right = (self.position[0] + 5 * math.cos(rad - 2.5), self.position[1] - 5 * math.sin(rad - 2.5))
         pygame.draw.polygon(screen, (255, 255, 0), [tip, left, right])
 
-        # Draw selection circle if selected
         if self.selected:
             pygame.draw.circle(screen, (255, 0, 0), self.rect.center, 25, 2)
 
-        # Draw shields if raised
         if self.shields_up:
             pygame.draw.circle(screen, (0, 0, 255), self.rect.center, 25, 2)
 
@@ -167,12 +165,12 @@ class Game:
 
     def initialize_pygame(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))  # Smaller map
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height)) 
         self.clock = pygame.time.Clock()
 
     def create_ships(self):
-        ship1 = Ship("Enterprise", "green", (100, 50), 90, 0)  # Facing north, speed stopped
-        ship2 = Ship("Voyager", "green", (100, 75), 270, 0)     # Facing south, speed stopped
+        ship1 = Ship("Enterprise", "green", (100, 50), 90, 0) 
+        ship2 = Ship("Voyager", "green", (100, 75), 270, 0)  
         ship3 = Ship("Voq'leth", "blue", (200, 150), 90, 0) 
         ship4 = Ship("Negh'Var", "blue", (200, 100), 270, 0) 
         self.add_ship(ship1)
@@ -207,9 +205,9 @@ class Game:
                     sys.exit()
             self.screen.fill((10, 10, 40))
             for ship in self.ships.values():
-                ship.move(self.screen_width, self.screen_height)  # Move the ship based on its speed and direction
-                ship.update_shields()  # Update shields status
-                ship.draw(self.screen)  # Draw the ship with its facing direction
+                ship.move(self.screen_width, self.screen_height) 
+                ship.update_shields()  
+                ship.draw(self.screen) 
                 self.display_health(ship)
             pygame.display.flip()
             self.clock.tick(60)
@@ -218,7 +216,7 @@ class Game:
         while not command_queue.empty():
             ship_name, command = command_queue.get()
             ship = self.ships.get(ship_name)
-            if ship and not ship.deactivated:  # Ignore commands if the ship is deactivated
+            if ship and not ship.deactivated: 
                 if command.startswith("FIRE"):
                     _, target_name = command.split()
                     self.fire_weapon(ship, target_name)
@@ -247,9 +245,9 @@ class Game:
 
     def change_direction(self, ship, command):
         if command == "LEFT":
-            ship.change_direction(15)  # Turn left by 15 degrees
+            ship.change_direction(15) 
         elif command == "RIGHT":
-            ship.change_direction(-15)  # Turn right by 15 degrees
+            ship.change_direction(-15)
 
     def fire_weapon(self, attacking_ship, target_name):
         if attacking_ship.disabled_consoles["weapons"] or attacking_ship.power <= 0:
@@ -258,7 +256,7 @@ class Game:
         if target_name in self.ships:
             if attacking_ship.consume_power(2):
                 target_ship = self.ships[target_name]
-                if attacking_ship.distance_to(target_ship) <= 100:  # Assuming 100 is the max range
+                if attacking_ship.distance_to(target_ship) <= 100:
                     target_ship.decrease_health()
                 else:
                     print(f"Target {target_name} is out of range.")
@@ -267,7 +265,7 @@ class Game:
 
     def select_target(self, target_name):
         if self.selected_target:
-            self.ships[self.selected_target].selected = False  # Deselect previous target
+            self.ships[self.selected_target].selected = False
         if target_name in self.ships:
             self.ships[target_name].selected = True
             self.selected_target = target_name

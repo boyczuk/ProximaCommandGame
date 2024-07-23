@@ -2,7 +2,7 @@ import tkinter as tk
 from game import command_queue
 import threading
 
-game_instance = None  # This will be set in the main.py
+game_instance = None
 
 def post_command(ship, command):
     command_queue.put((ship, command))
@@ -19,7 +19,6 @@ def update_target_list(ship_name, target_listbox, selected_target, radius=100):
                 display_name += " (target unavailable)"
             target_listbox.insert(tk.END, display_name)
 
-        # Reselect the previously selected target if it still exists
         for i in range(target_listbox.size()):
             if target_listbox.get(i).startswith(selected_target):
                 target_listbox.selection_set(i)
@@ -29,7 +28,6 @@ def create_control_panel(ship_name):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
-    # Create frames for each section
     weapons_frame = tk.LabelFrame(root, text="Weapons")
     weapons_frame.pack(fill="both", expand="yes")
     science_frame = tk.LabelFrame(root, text="Science")
@@ -50,8 +48,8 @@ def create_control_panel(ship_name):
         w = evt.widget
         if w.curselection():
             index = int(w.curselection()[0])
-            selected_target = w.get(index).split()[0]  # Store the selected target's name
-            post_command(ship_name, f"SELECT {selected_target}")  # Send SELECT command to game
+            selected_target = w.get(index).split()[0]
+            post_command(ship_name, f"SELECT {selected_target}")
 
     target_listbox.bind('<<ListboxSelect>>', on_select)
 
@@ -62,7 +60,7 @@ def create_control_panel(ship_name):
     tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
 
     # Science section
-    shield_button = tk.Button(science_frame, text="Raise/Lower Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
+    shield_button = tk.Button(science_frame, text="Raise Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
     shield_button.pack()
 
     def update_shield_button():

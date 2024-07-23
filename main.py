@@ -8,7 +8,7 @@ def start_game():
     return game_instance
 
 def start_control_panel(game_instance):
-    control_panel.game_instance = game_instance  # Pass the game instance to the control panel module
+    control_panel.game_instance = game_instance
     threading.Thread(target=control_panel.start_control_panels).start()
 
 if __name__ == "__main__":
