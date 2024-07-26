@@ -129,10 +129,14 @@ def create_control_panel(ship_name):
     root.mainloop()
 
 def start_control_panels():
-    threading.Thread(target=create_control_panel, args=("Enterprise",)).start()
-    threading.Thread(target=create_control_panel, args=("Voyager",)).start()
-    threading.Thread(target=create_control_panel, args=("Voq'leth",)).start()
-    threading.Thread(target=create_control_panel, args=("Negh'Var",)).start()
+    threads = []
+    for ship_name in ["Enterprise", "Voyager", "Voq'leth", "Negh'Var"]:
+        thread = threading.Thread(target=create_control_panel, args=(ship_name,))
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
 
 if __name__ == "__main__":
     start_control_panels()

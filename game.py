@@ -12,7 +12,7 @@ class PowerUp:
     def __init__(self, type, position):
         self.type = type
         self.position = position
-        self.rect = pygame.Rect(position[0], position[1], 20,20)
+        self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.collected = False
 
     def draw(self, screen):
@@ -46,8 +46,9 @@ class Ship:
         self.power = 100
         self.max_power = 100
         self.power_cooldown = False
-        self.torpedo_powerup = False  # For torpedo power-up
+        self.torpedo_powerup = False
         self.repair_rate_multiplier = 1
+        self.collision_cooldown = 0
 
     def move(self, screen_width, screen_height):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -74,12 +75,13 @@ class Ship:
         if self.shields_up:
             print(f"{self.name} was hit but shields absorbed the damage!")
         else:
-            self.health -= damage
-            print(f"{self.name} has been hit! Health: {self.health}")
-            if self.health <= 0:
-                self.deactivate()
-            else:
-                self.disable_random_console()
+            if self.health > 0:
+                self.health -= damage
+                print(f"{self.name} has been hit! Health: {self.health}")
+                if self.health <= 0:
+                    self.deactivate()
+                else:
+                    self.disable_random_console()
 
     def change_direction(self, angle):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -235,6 +237,20 @@ class Game:
         elif powerup.type == "engineer":
             ship.repair_rate_multiplier = 2
 
+    def check_ship_collisions(self):
+        current_time = time.time()
+        ships = list(self.ships.values())
+        for i in range(len(ships)):
+            for j in range(i + 1, len(ships)):
+                if ships[i].rect.colliderect(ships[j].rect):
+                    if ships[i].health > 0 and ships[j].health > 0:
+                        if current_time - ships[i].collision_cooldown > 1 and current_time - ships[j].collision_cooldown > 1:
+                            ships[i].decrease_health(1)
+                            ships[j].decrease_health(1)
+                            ships[i].collision_cooldown = current_time
+                            ships[j].collision_cooldown = current_time
+                            print(f"Collision detected between {ships[i].name} and {ships[j].name}")
+
     def is_valid_move(self, ship, new_position):
         test_rect = pygame.Rect(new_position[0], new_position[1], 20, 20)
         for other_ship in self.ships.values():
@@ -267,6 +283,7 @@ class Game:
                 if not powerup.collected:
                     powerup.draw(self.screen)
             self.check_powerup_collisions()
+            self.check_ship_collisions()  # Check for ship collisions
             pygame.display.flip()
             self.clock.tick(60)
 
