@@ -32,8 +32,8 @@ class Ship:
         self.position = list(position)
         self.facing = facing
         self.speed = speed
-        self.max_speed = 2
-        self.health = 5
+        self.max_speed = 1  # Slowed down
+        self.health = 10  # Increased health for longer gameplay
         self.shields_up = False
         self.shield_raised_time = 0
         self.shield_cooldown = False
@@ -54,11 +54,11 @@ class Ship:
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
             return
         if self.speed > 0:
-            power_cost = 0.01 if self.speed == 1 else 0.02
+            power_cost = 0.005 if self.speed == 1 else 0.01  # Slower power consumption
             if self.consume_power(power_cost):
                 rad = math.radians(self.facing)
-                dx = self.max_speed * self.speed * math.cos(rad) / 5
-                dy = -self.max_speed * math.sin(rad) * self.speed / 5  # negative because Pygame's y-axis is inverted
+                dx = self.max_speed * self.speed * math.cos(rad) / 10  # Slower movement
+                dy = -self.max_speed * math.sin(rad) * self.speed / 10
                 new_x = self.position[0] + dx
                 new_y = self.position[1] + dy
 
@@ -86,7 +86,7 @@ class Ship:
     def change_direction(self, angle):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
             return
-        if self.consume_power(1):
+        if self.consume_power(0.5):  # Reduced power cost
             self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
@@ -95,7 +95,7 @@ class Ship:
         current_time = time.time()
         if not self.shield_cooldown:
             if not self.shields_up:
-                if self.consume_power(3):
+                if self.consume_power(1.5):  # Reduced power cost
                     self.shields_up = True
                     self.shield_raised_time = current_time
                     self.shield_cooldown = True  
@@ -104,10 +104,10 @@ class Ship:
 
     def update_shields(self):
         current_time = time.time()
-        if self.shields_up and current_time - self.shield_raised_time >= 3: 
+        if self.shields_up and current_time - self.shield_raised_time >= 5:  # Extended shield duration
             self.shields_up = False
         if self.shield_cooldown and not self.shields_up:
-            if current_time - self.shield_raised_time >= 8: 
+            if current_time - self.shield_raised_time >= 10: 
                 self.shield_cooldown = False
 
     def disable_random_console(self):
@@ -117,36 +117,67 @@ class Ship:
                 self.disabled_consoles[console] = True
                 print(f"{self.name} had its {console} console disabled!")
 
-    def repair_console(self, console):
+    def repair_helm(self):
         current_time = time.time()
-        if self.disabled_consoles[console] and not self.repairing and current_time - self.repair_cooldowns[console] >= 60:
+        if self.disabled_consoles["helm"] and not self.repairing and current_time - self.repair_cooldowns["helm"] >= 60:
             self.repairing = True
-            print(f"Repairing {console} console on {self.name}...")
+            print(f"Repairing helm console on {self.name}...")
             if self.consume_power(5):
-                repair_time = 3 / self.repair_rate_multiplier  # Adjust repair time based on multiplier
+                repair_time = 6 / self.repair_rate_multiplier  # Slower repair time
                 time.sleep(repair_time)
-                self.disabled_consoles[console] = False
-                self.health += 1
-                self.repair_cooldowns[console] = current_time
+                self.disabled_consoles["helm"] = False
+                self.repair_cooldowns["helm"] = current_time
                 self.repairing = False
-                print(f"{console} console on {self.name} has been repaired and health restored!")
+                print(f"Helm console on {self.name} has been repaired!")
             else:
                 self.repairing = False
-                print(f"Not enough power to repair {console} console on {self.name}.")
+                print(f"Not enough power to repair helm console on {self.name}.")
+
+    def repair_shields(self):
+        current_time = time.time()
+        if self.disabled_consoles["shields"] and not self.repairing and current_time - self.repair_cooldowns["shields"] >= 60:
+            self.repairing = True
+            print(f"Repairing shields console on {self.name}...")
+            if self.consume_power(5):
+                repair_time = 6 / self.repair_rate_multiplier
+                time.sleep(repair_time)
+                self.disabled_consoles["shields"] = False
+                self.repair_cooldowns["shields"] = current_time
+                self.repairing = False
+                print(f"Shields console on {self.name} has been repaired!")
+            else:
+                self.repairing = False
+                print(f"Not enough power to repair shields console on {self.name}.")
+
+    def repair_weapons(self):
+        current_time = time.time()
+        if self.disabled_consoles["weapons"] and not self.repairing and current_time - self.repair_cooldowns["weapons"] >= 60:
+            self.repairing = True
+            print(f"Repairing weapons console on {self.name}...")
+            if self.consume_power(5):
+                repair_time = 6 / self.repair_rate_multiplier
+                time.sleep(repair_time)
+                self.disabled_consoles["weapons"] = False
+                self.repair_cooldowns["weapons"] = current_time
+                self.repairing = False
+                print(f"Weapons console on {self.name} has been repaired!")
+            else:
+                self.repairing = False
+                print(f"Not enough power to repair weapons console on {self.name}.")
 
     def fire_weapon(self, target_ship):
         if self.torpedo_powerup:
             target_ship.decrease_health(2)  # Deal 2 damage instead of 1
             self.torpedo_powerup = False
         else:
-            target_ship.decrease_health(1)
+            target_ship.decrease_health(0.5)  # Reduced damage for longer gameplay
 
     def restore_power(self):
         if not self.power_cooldown:
             print(f"Restoring power on {self.name}...")
             self.power = self.max_power
             self.power_cooldown = True
-            time.sleep(5)
+            time.sleep(10)  # Extended time for power restoration
             self.power_cooldown = False
             print(f"Power restored on {self.name}.")
 
@@ -170,7 +201,6 @@ class Ship:
         pygame.draw.rect(screen, color, self.rect)
 
         # Draw the facing triangle 
-        # May change this because it feels weird
         rad = math.radians(self.facing)
         tip = (self.position[0] + 10 * math.cos(rad), self.position[1] - 10 * math.sin(rad))
         left = (self.position[0] + 5 * math.cos(rad + 2.5), self.position[1] - 5 * math.sin(rad + 2.5))
@@ -244,9 +274,9 @@ class Game:
             for j in range(i + 1, len(ships)):
                 if ships[i].rect.colliderect(ships[j].rect):
                     if ships[i].health > 0 and ships[j].health > 0:
-                        if current_time - ships[i].collision_cooldown > 1 and current_time - ships[j].collision_cooldown > 1:
-                            ships[i].decrease_health(1)
-                            ships[j].decrease_health(1)
+                        if current_time - ships[i].collision_cooldown > 2 and current_time - ships[j].collision_cooldown > 2:  # Longer cooldown for collisions
+                            ships[i].decrease_health(0.5)  # Reduced damage
+                            ships[j].decrease_health(0.5)
                             ships[i].collision_cooldown = current_time
                             ships[j].collision_cooldown = current_time
                             print(f"Collision detected between {ships[i].name} and {ships[j].name}")
@@ -283,15 +313,15 @@ class Game:
                 if not powerup.collected:
                     powerup.draw(self.screen)
             self.check_powerup_collisions()
-            self.check_ship_collisions()  # Check for ship collisions
+            self.check_ship_collisions()
             pygame.display.flip()
-            self.clock.tick(60)
+            self.clock.tick(30)  # Reduced game speed
 
     def handle_commands(self):
         while not command_queue.empty():
             ship_name, command = command_queue.get()
             ship = self.ships.get(ship_name)
-            if ship and not ship.deactivated: 
+            if ship and not ship.deactivated:
                 if command.startswith("FIRE"):
                     _, target_name = command.split()
                     self.fire_weapon(ship, target_name)
@@ -304,9 +334,12 @@ class Game:
                 elif command.startswith("SELECT"):
                     _, target_name = command.split()
                     self.select_target(target_name)
-                elif command.startswith("REPAIR"):
-                    _, console = command.split()
-                    threading.Thread(target=ship.repair_console, args=(console,)).start()
+                elif command == "REPAIR_HELM":
+                    threading.Thread(target=ship.repair_helm).start()
+                elif command == "REPAIR_SHIELDS":
+                    threading.Thread(target=ship.repair_shields).start()
+                elif command == "REPAIR_WEAPONS":
+                    threading.Thread(target=ship.repair_weapons).start()
                 elif command == "RESTORE_POWER":
                     threading.Thread(target=ship.restore_power).start()
 
@@ -314,22 +347,22 @@ class Game:
         if command == "STOP":
             ship.speed = 0
         elif command == "PARTIAL":
-            ship.speed = 1
+            ship.speed = 0.5  # Slower partial speed
         elif command == "FULL":
-            ship.speed = 2
+            ship.speed = 1  # Slower full speed
 
     def change_direction(self, ship, command):
         if command == "LEFT":
-            ship.change_direction(15) 
+            ship.change_direction(7.5)  # Slower turning rate
         elif command == "RIGHT":
-            ship.change_direction(-15)
+            ship.change_direction(-7.5)
 
     def fire_weapon(self, attacking_ship, target_name):
         if attacking_ship.disabled_consoles["weapons"] or attacking_ship.power <= 0:
             print(f"{attacking_ship.name}'s weapons are disabled or no power!")
             return
         if target_name in self.ships:
-            if attacking_ship.consume_power(2):
+            if attacking_ship.consume_power(1):  # Reduced power cost
                 target_ship = self.ships[target_name]
                 if attacking_ship.distance_to(target_ship) <= 100:
                     attacking_ship.fire_weapon(target_ship)

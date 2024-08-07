@@ -24,9 +24,19 @@ def update_target_list(ship_name, target_listbox, selected_target, radius=100):
                 target_listbox.selection_set(i)
                 break
 
-def create_control_panel(ship_name):
+def create_control_panel(ship_name, position_index):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
+
+    # Set window position
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    window_width = 400
+    window_height = 600
+    columns = 2  # Number of columns of windows
+    x = (position_index % columns) * window_width
+    y = (position_index // columns) * window_height
+    root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
     weapons_frame = tk.LabelFrame(root, text="Weapons")
     weapons_frame.pack(fill="both", expand="yes")
@@ -63,6 +73,8 @@ def create_control_panel(ship_name):
     shield_button = tk.Button(science_frame, text="Raise Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
     shield_button.pack()
 
+    tk.Button(science_frame, text="Repair Shields", command=lambda: post_command(ship_name, "REPAIR_SHIELDS")).pack()
+
     def update_shield_button():
         ship = game_instance.ships[ship_name]
         if ship.shield_cooldown or ship.deactivated or ship.disabled_consoles["shields"]:
@@ -85,6 +97,8 @@ def create_control_panel(ship_name):
     right_button = tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT"))
     right_button.pack()
 
+    tk.Button(helm_frame, text="Repair Helm", command=lambda: post_command(ship_name, "REPAIR_HELM")).pack()
+
     def update_helm_buttons():
         ship = game_instance.ships[ship_name]
         state = "normal" if not ship.deactivated and not ship.disabled_consoles["helm"] else "disabled"
@@ -98,13 +112,6 @@ def create_control_panel(ship_name):
     root.after(1000, update_helm_buttons)
 
     # Engineering section
-    def repair_console(console):
-        post_command(ship_name, f"REPAIR {console}")
-
-    tk.Button(engineering_frame, text="Repair Helm", command=lambda: repair_console("helm")).pack()
-    tk.Button(engineering_frame, text="Repair Shields", command=lambda: repair_console("shields")).pack()
-    tk.Button(engineering_frame, text="Repair Weapons", command=lambda: repair_console("weapons")).pack()
-
     def restore_power():
         post_command(ship_name, "RESTORE_POWER")
 
@@ -121,6 +128,9 @@ def create_control_panel(ship_name):
 
     root.after(1000, update_restore_power_button)
 
+    # Weapons repair section
+    tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR_WEAPONS")).pack()
+
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
         root.after(1000, update_targets)  # Schedule next update
@@ -129,14 +139,9 @@ def create_control_panel(ship_name):
     root.mainloop()
 
 def start_control_panels():
-    threads = []
-    for ship_name in ["Enterprise", "Voyager", "Voq'leth", "Negh'Var"]:
-        thread = threading.Thread(target=create_control_panel, args=(ship_name,))
-        thread.start()
-        threads.append(thread)
-
-    for thread in threads:
-        thread.join()
+    ship_names = ["Enterprise", "Voyager", "Voq'leth", "Negh'Var"]
+    for i, ship_name in enumerate(ship_names):
+        threading.Thread(target=create_control_panel, args=(ship_name, i)).start()
 
 if __name__ == "__main__":
     start_control_panels()
