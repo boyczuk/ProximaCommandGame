@@ -69,6 +69,8 @@ def create_control_panel(ship_name, position_index):
 
     tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
 
+    tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR_WEAPONS")).pack()
+
     # Science section
     shield_button = tk.Button(science_frame, text="Raise Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
     shield_button.pack()
@@ -112,6 +114,21 @@ def create_control_panel(ship_name, position_index):
     root.after(1000, update_helm_buttons)
 
     # Engineering section
+    def activate_powerup(powerup_type):
+        post_command(ship_name, f"ACTIVATE {powerup_type}")
+
+    powerup_buttons = {}
+    def update_powerup_buttons():
+        ship = game_instance.ships[ship_name]
+        for powerup_type in ship.collected_powerups:
+            if powerup_type not in powerup_buttons:
+                btn = tk.Button(engineering_frame, text=f"Activate {powerup_type}", command=lambda pt=powerup_type: activate_powerup(pt))
+                btn.pack()
+                powerup_buttons[powerup_type] = btn
+        root.after(1000, update_powerup_buttons)
+
+    root.after(1000, update_powerup_buttons)
+
     def restore_power():
         post_command(ship_name, "RESTORE_POWER")
 
@@ -127,9 +144,6 @@ def create_control_panel(ship_name, position_index):
         root.after(1000, update_restore_power_button)
 
     root.after(1000, update_restore_power_button)
-
-    # Weapons repair section
-    tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR_WEAPONS")).pack()
 
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
