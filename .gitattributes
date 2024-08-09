@@ -3,6 +3,10 @@
 # Mark all HTML and LaTeX files as generated
 *.html linguist-generated=true
 *.tex linguist-generated=true
+*.cls linguist-generated=true
+*.sty linguist-generated=true
+
+
 
 # Exclude specific directories from language statistics
 build/* linguist-vendored
