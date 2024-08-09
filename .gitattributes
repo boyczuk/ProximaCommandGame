@@ -5,6 +5,7 @@
 *.tex linguist-generated=true
 *.cls linguist-generated=true
 *.sty linguist-generated=true
+*.toc linguist-generated=true
 
 
 
