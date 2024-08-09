@@ -1,0 +1,24 @@
+# Linguist documentation: https://github.com/github/linguist
+
+# Mark all HTML and LaTeX files as generated
+*.html linguist-generated=true
+*.tex linguist-generated=true
+
+# Exclude specific directories from language statistics
+build/* linguist-vendored
+dist/* linguist-vendored
+__pycache__/* linguist-vendored
+
+# Treat all markdown files as documentation
+*.md linguist-documentation
+
+# Exclude specific file types from being counted
+*.json linguist-vendored
+*.log linguist-vendored
+
+# Mark any vendored files
+third_party/* linguist-vendored
+
+# Example to collapse diffs by default for specific long-form files or logs
+*.csv linguist-diff=unfold
+*.lock linguist-diff=unfold
