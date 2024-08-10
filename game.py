@@ -14,6 +14,7 @@ class PowerUp:
         self.position = position
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.collected = False
+        self.spawn_time = time.time()
 
     def draw(self, screen):
         if self.type == "power_cell":
@@ -24,6 +25,9 @@ class PowerUp:
             color = (0, 255, 0)
         pygame.draw.rect(screen, color, self.rect)
 
+    def is_expired(self):
+        return time.time() - self.spawn_time > 60  # 1 minute expiration time
+
 class Ship:
     def __init__(self, name, team, position, facing, speed):
         self.name = name
@@ -31,8 +35,8 @@ class Ship:
         self.position = list(position)
         self.facing = facing
         self.speed = speed
-        self.max_speed = 2
-        self.health = 5
+        self.max_speed = 1
+        self.health = 10
         self.shields_up = False
         self.shield_raised_time = 0
         self.shield_cooldown = False
@@ -48,13 +52,13 @@ class Ship:
         self.torpedo_powerup = False
         self.repair_rate_multiplier = 1
         self.collision_cooldown = 0
-        self.collected_powerups = []  # New attribute to store collected power-ups
+        self.collected_powerups = []
 
     def move(self, screen_width, screen_height):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
             return
         if self.speed > 0:
-            power_cost = 0.01 if self.speed == 1 else 0.02
+            power_cost = 0.01 if self.speed == 0.5 else 0.02
             if self.consume_power(power_cost):
                 rad = math.radians(self.facing)
                 dx = self.max_speed * self.speed * math.cos(rad) / 5
@@ -98,16 +102,16 @@ class Ship:
                 if self.consume_power(3):
                     self.shields_up = True
                     self.shield_raised_time = current_time
-                    self.shield_cooldown = True
+                    self.shield_cooldown = True  
             else:
                 self.shields_up = False
 
     def update_shields(self):
         current_time = time.time()
-        if self.shields_up and current_time - self.shield_raised_time >= 3:
+        if self.shields_up and current_time - self.shield_raised_time >= 3: 
             self.shields_up = False
         if self.shield_cooldown and not self.shields_up:
-            if current_time - self.shield_raised_time >= 8:
+            if current_time - self.shield_raised_time >= 8: 
                 self.shield_cooldown = False
 
     def disable_random_console(self):
@@ -163,14 +167,16 @@ class Ship:
         print(f"{self.name} has been deactivated!")
 
     def activate_powerup(self, powerup_type):
-        if powerup_type == "power_cell":
-            self.max_power = 150
-            self.power = 150
-        elif powerup_type == "torpedo":
-            self.torpedo_powerup = True
-        elif powerup_type == "engineer":
-            self.repair_rate_multiplier = 2
-        print(f"{self.name} activated {powerup_type} power-up!")
+        if powerup_type in self.collected_powerups:
+            if powerup_type == "power_cell":
+                self.max_power = 150
+                self.power = 150
+            elif powerup_type == "torpedo":
+                self.torpedo_powerup = True
+            elif powerup_type == "engineer":
+                self.repair_rate_multiplier = 2
+            print(f"{self.name} activated {powerup_type} power-up!")
+            self.collected_powerups.remove(powerup_type)
 
     def draw(self, screen):
         if self.deactivated:
@@ -222,7 +228,7 @@ class Game:
 
     def create_powerups(self):
         powerup_types = ["power_cell", "torpedo", "engineer"]
-        num_powerups = random.randint(1,5)
+        num_powerups = random.randint(1, 5)
         for _ in range(num_powerups):
             powerup_type = random.choice(powerup_types)
             position = (random.randint(0, self.screen_width - 20), random.randint(0, self.screen_height - 20))
@@ -237,6 +243,13 @@ class Game:
                     powerup.collected = True
                     print(f"{ship.name} collected a {powerup.type} power-up!")
 
+    def remove_expired_powerups(self):
+        self.powerups = [p for p in self.powerups if not p.is_expired()]
+
+    def add_new_powerups(self):
+        if len([p for p in self.powerups if not p.collected]) < 3:
+            self.create_powerups()
+
     def check_ship_collisions(self):
         current_time = time.time()
         ships = list(self.ships.values())
@@ -244,7 +257,7 @@ class Game:
             for j in range(i + 1, len(ships)):
                 if ships[i].rect.colliderect(ships[j].rect):
                     if ships[i].health > 0 and ships[j].health > 0:
-                        if current_time - ships[i].collision_cooldown > 1 and current_time - ships[j].collision_cooldown > 1:
+                        if current_time - ships[i].collision_cooldown > 2 and current_time - ships[j].collision_cooldown > 2:
                             ships[i].decrease_health(1)
                             ships[j].decrease_health(1)
                             ships[i].collision_cooldown = current_time
@@ -279,6 +292,8 @@ class Game:
                 ship.update_shields()
                 ship.draw(self.screen)
                 self.display_health(ship)
+            self.remove_expired_powerups()
+            self.add_new_powerups()
             for powerup in self.powerups:
                 if not powerup.collected:
                     powerup.draw(self.screen)
@@ -307,25 +322,25 @@ class Game:
                 elif command.startswith("REPAIR"):
                     _, console = command.split()
                     threading.Thread(target=ship.repair_console, args=(console,)).start()
-                elif command.startswith("ACTIVATE"):
-                    _, powerup_type = command.split()
-                    threading.Thread(target=ship.activate_powerup, args=(powerup_type,)).start()
                 elif command == "RESTORE_POWER":
                     threading.Thread(target=ship.restore_power).start()
+                elif command.startswith("ACTIVATE"):
+                    _, powerup_type = command.split()
+                    ship.activate_powerup(powerup_type)
 
     def adjust_speed(self, ship, command):
         if command == "STOP":
             ship.speed = 0
         elif command == "PARTIAL":
-            ship.speed = 1
+            ship.speed = 0.5
         elif command == "FULL":
-            ship.speed = 2
+            ship.speed = 1
 
     def change_direction(self, ship, command):
         if command == "LEFT":
-            ship.change_direction(15)
+            ship.change_direction(10)
         elif command == "RIGHT":
-            ship.change_direction(-15)
+            ship.change_direction(-10)
 
     def fire_weapon(self, attacking_ship, target_name):
         if attacking_ship.disabled_consoles["weapons"] or attacking_ship.power <= 0:
@@ -356,3 +371,4 @@ class Game:
         rounded_power = round(ship.power)
         text = font.render(f"Power: {rounded_power}", True, (255, 255, 255))
         self.screen.blit(text, (ship.position[0], ship.position[1] + 20))
+

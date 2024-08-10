@@ -28,12 +28,11 @@ def create_control_panel(ship_name, position_index):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
-    # Set window position
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     window_width = 400
     window_height = 600
-    columns = 2  # Number of columns of windows
+    columns = 2
     x = (position_index % columns) * window_width
     y = (position_index // columns) * window_height
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -69,13 +68,19 @@ def create_control_panel(ship_name, position_index):
 
     tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
 
-    tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR_WEAPONS")).pack()
+    def repair_weapons():
+        post_command(ship_name, "REPAIR weapons")
+
+    tk.Button(weapons_frame, text="Repair Weapons", command=repair_weapons).pack()
 
     # Science section
     shield_button = tk.Button(science_frame, text="Raise Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
     shield_button.pack()
 
-    tk.Button(science_frame, text="Repair Shields", command=lambda: post_command(ship_name, "REPAIR_SHIELDS")).pack()
+    def repair_shields():
+        post_command(ship_name, "REPAIR shields")
+
+    tk.Button(science_frame, text="Repair Shields", command=repair_shields).pack()
 
     def update_shield_button():
         ship = game_instance.ships[ship_name]
@@ -99,7 +104,10 @@ def create_control_panel(ship_name, position_index):
     right_button = tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT"))
     right_button.pack()
 
-    tk.Button(helm_frame, text="Repair Helm", command=lambda: post_command(ship_name, "REPAIR_HELM")).pack()
+    def repair_helm():
+        post_command(ship_name, "REPAIR helm")
+
+    tk.Button(helm_frame, text="Repair Helm", command=repair_helm).pack()
 
     def update_helm_buttons():
         ship = game_instance.ships[ship_name]
@@ -114,25 +122,25 @@ def create_control_panel(ship_name, position_index):
     root.after(1000, update_helm_buttons)
 
     # Engineering section
-    def activate_powerup(powerup_type):
-        post_command(ship_name, f"ACTIVATE {powerup_type}")
+    powerup_buttons = []
 
-    powerup_buttons = {}
     def update_powerup_buttons():
         ship = game_instance.ships[ship_name]
-        for powerup_type in ship.collected_powerups:
-            if powerup_type not in powerup_buttons:
-                btn = tk.Button(engineering_frame, text=f"Activate {powerup_type}", command=lambda pt=powerup_type: activate_powerup(pt))
-                btn.pack()
-                powerup_buttons[powerup_type] = btn
+        for btn in powerup_buttons:
+            btn.pack_forget()
+        powerup_buttons.clear()
+        for powerup in ship.collected_powerups:
+            btn = tk.Button(engineering_frame, text=f"Use {powerup}", command=lambda p=powerup: use_powerup(p))
+            btn.pack()
+            powerup_buttons.append(btn)
         root.after(1000, update_powerup_buttons)
+
+    def use_powerup(powerup_type):
+        post_command(ship_name, f"ACTIVATE {powerup_type}")
 
     root.after(1000, update_powerup_buttons)
 
-    def restore_power():
-        post_command(ship_name, "RESTORE_POWER")
-
-    restore_power_button = tk.Button(engineering_frame, text="Restore Power", command=restore_power)
+    restore_power_button = tk.Button(engineering_frame, text="Restore Power", command=lambda: post_command(ship_name, "RESTORE_POWER"))
     restore_power_button.pack()
 
     def update_restore_power_button():
@@ -147,9 +155,9 @@ def create_control_panel(ship_name, position_index):
 
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
-        root.after(1000, update_targets)  # Schedule next update
+        root.after(1000, update_targets)
 
-    root.after(1000, update_targets)  # Start the first update
+    root.after(1000, update_targets)
     root.mainloop()
 
 def start_control_panels():
