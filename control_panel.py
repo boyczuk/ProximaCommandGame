@@ -28,11 +28,12 @@ def create_control_panel(ship_name, position_index):
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
+    # Set window position
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     window_width = 400
     window_height = 600
-    columns = 2
+    columns = 2  # Number of columns of windows
     x = (position_index % columns) * window_width
     y = (position_index // columns) * window_height
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -66,31 +67,36 @@ def create_control_panel(ship_name, position_index):
         if selected_target and " (target unavailable)" not in selected_target:
             post_command(ship_name, f"FIRE {selected_target}")
 
-    tk.Button(weapons_frame, text="Fire", command=fire_command).pack()
+    fire_button = tk.Button(weapons_frame, text="Fire", command=fire_command)
+    fire_button.pack()
 
-    def repair_weapons():
-        post_command(ship_name, "REPAIR weapons")
+    repair_weapons_button = tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR weapons"))
+    repair_weapons_button.pack()
 
-    tk.Button(weapons_frame, text="Repair Weapons", command=repair_weapons).pack()
+    def update_weapons_buttons():
+        ship = game_instance.ships[ship_name]
+        state = "normal" if not ship.deactivated and not ship.disabled_consoles["weapons"] else "disabled"
+        fire_button.config(state=state)
+        repair_weapons_button.config(state=state)
+        root.after(1000, update_weapons_buttons)
+
+    root.after(1000, update_weapons_buttons)
 
     # Science section
     shield_button = tk.Button(science_frame, text="Raise Shields", command=lambda: post_command(ship_name, "TOGGLE_SHIELDS"))
     shield_button.pack()
 
-    def repair_shields():
-        post_command(ship_name, "REPAIR shields")
+    repair_shields_button = tk.Button(science_frame, text="Repair Shields", command=lambda: post_command(ship_name, "REPAIR shields"))
+    repair_shields_button.pack()
 
-    tk.Button(science_frame, text="Repair Shields", command=repair_shields).pack()
-
-    def update_shield_button():
+    def update_science_buttons():
         ship = game_instance.ships[ship_name]
-        if ship.shield_cooldown or ship.deactivated or ship.disabled_consoles["shields"]:
-            shield_button.config(state="disabled")
-        else:
-            shield_button.config(state="normal")
-        root.after(1000, update_shield_button)
+        state = "normal" if not ship.deactivated and not ship.disabled_consoles["shields"] else "disabled"
+        shield_button.config(state=state)
+        repair_shields_button.config(state=state)
+        root.after(1000, update_science_buttons)
 
-    root.after(1000, update_shield_button)
+    root.after(1000, update_science_buttons)
 
     # Helm section
     stop_button = tk.Button(helm_frame, text="Stop", command=lambda: post_command(ship_name, "STOP"))
@@ -104,10 +110,8 @@ def create_control_panel(ship_name, position_index):
     right_button = tk.Button(helm_frame, text="Turn Right", command=lambda: post_command(ship_name, "RIGHT"))
     right_button.pack()
 
-    def repair_helm():
-        post_command(ship_name, "REPAIR helm")
-
-    tk.Button(helm_frame, text="Repair Helm", command=repair_helm).pack()
+    repair_helm_button = tk.Button(helm_frame, text="Repair Helm", command=lambda: post_command(ship_name, "REPAIR helm"))
+    repair_helm_button.pack()
 
     def update_helm_buttons():
         ship = game_instance.ships[ship_name]
@@ -117,30 +121,42 @@ def create_control_panel(ship_name, position_index):
         full_speed_button.config(state=state)
         left_button.config(state=state)
         right_button.config(state=state)
+        repair_helm_button.config(state=state)
         root.after(1000, update_helm_buttons)
 
     root.after(1000, update_helm_buttons)
 
     # Engineering section
-    powerup_buttons = []
+    def activate_powerup(powerup_type, button):
+        post_command(ship_name, f"ACTIVATE {powerup_type}")
+        button.destroy()
+
+    powerup_buttons = {}
 
     def update_powerup_buttons():
         ship = game_instance.ships[ship_name]
-        for btn in powerup_buttons:
-            btn.pack_forget()
-        powerup_buttons.clear()
-        for powerup in ship.collected_powerups:
-            btn = tk.Button(engineering_frame, text=f"Use {powerup}", command=lambda p=powerup: use_powerup(p))
-            btn.pack()
-            powerup_buttons.append(btn)
+        for powerup_type in ship.collected_powerups:
+            if powerup_type not in powerup_buttons:
+                def make_command(pt=powerup_type):
+                    return lambda: activate_powerup(pt, powerup_buttons[pt])
+                button = tk.Button(engineering_frame, text=f"Activate {powerup_type}", command=make_command())
+                button.pack()
+                powerup_buttons[powerup_type] = button
+        ship.collected_powerups.clear()
         root.after(1000, update_powerup_buttons)
-
-    def use_powerup(powerup_type):
-        post_command(ship_name, f"ACTIVATE {powerup_type}")
 
     root.after(1000, update_powerup_buttons)
 
-    restore_power_button = tk.Button(engineering_frame, text="Restore Power", command=lambda: post_command(ship_name, "RESTORE_POWER"))
+    def collect_powerup():
+        post_command(ship_name, "COLLECT_POWERUP")
+
+    collect_powerup_button = tk.Button(engineering_frame, text="Collect Powerup", command=collect_powerup)
+    collect_powerup_button.pack()
+
+    def restore_power():
+        post_command(ship_name, "RESTORE_POWER")
+
+    restore_power_button = tk.Button(engineering_frame, text="Restore Power", command=restore_power)
     restore_power_button.pack()
 
     def update_restore_power_button():
@@ -155,9 +171,9 @@ def create_control_panel(ship_name, position_index):
 
     def update_targets():
         update_target_list(ship_name, target_listbox, selected_target)
-        root.after(1000, update_targets)
+        root.after(1000, update_targets)  # Schedule next update
 
-    root.after(1000, update_targets)
+    root.after(1000, update_targets)  # Start the first update
     root.mainloop()
 
 def start_control_panels():
