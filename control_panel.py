@@ -4,6 +4,22 @@ import threading
 
 game_instance = None
 
+# Connect to external inputs here
+KEY_MAPPING = {
+    "fire": "space",
+    "raise_shields": "r",
+    "stop": "s",
+    "partial_speed": "w",
+    "full_speed": "f",
+    "turn_left": "a",
+    "turn_right": "d",
+    "repair_helm": "h",
+    "repair_shields": "e",
+    "repair_weapons": "q",
+    "collect_powerup": "c",
+    "restore_power": "p"
+}
+
 def post_command(ship, command):
     command_queue.put((ship, command))
 
@@ -33,7 +49,7 @@ def create_control_panel(ship_name, position_index):
     screen_height = root.winfo_screenheight()
     window_width = 400
     window_height = 600
-    columns = 2  # Number of columns of windows
+    columns = 2  
     x = (position_index % columns) * window_width
     y = (position_index // columns) * window_height
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -63,7 +79,11 @@ def create_control_panel(ship_name, position_index):
 
     target_listbox.bind('<<ListboxSelect>>', on_select)
 
-    fire_button = tk.Button(weapons_frame, text="Fire", command=lambda: post_command(ship_name, f"FIRE {selected_target}"))
+    def fire_command():
+        if selected_target and " (target unavailable)" not in selected_target:
+            post_command(ship_name, f"FIRE {selected_target}")
+
+    fire_button = tk.Button(weapons_frame, text="Fire", command=fire_command)
     fire_button.pack()
 
     repair_weapons_button = tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR weapons"))
@@ -170,9 +190,37 @@ def create_control_panel(ship_name, position_index):
         root.after(1000, update_targets)  # Schedule next update
 
     root.after(1000, update_targets)  # Start the first update
+
+    # Key bindings
+    def key_pressed(event):
+        key = event.keysym.lower()
+        if key == KEY_MAPPING["fire"]:
+            fire_command()
+        elif key == KEY_MAPPING["raise_shields"]:
+            shield_button.invoke()
+        elif key == KEY_MAPPING["stop"]:
+            stop_button.invoke()
+        elif key == KEY_MAPPING["partial_speed"]:
+            partial_speed_button.invoke()
+        elif key == KEY_MAPPING["full_speed"]:
+            full_speed_button.invoke()
+        elif key == KEY_MAPPING["turn_left"]:
+            left_button.invoke()
+        elif key == KEY_MAPPING["turn_right"]:
+            right_button.invoke()
+        elif key == KEY_MAPPING["repair_helm"]:
+            repair_helm_button.invoke()
+        elif key == KEY_MAPPING["repair_shields"]:
+            repair_shields_button.invoke()
+        elif key == KEY_MAPPING["repair_weapons"]:
+            repair_weapons_button.invoke()
+        elif key == KEY_MAPPING["collect_powerup"]:
+            collect_powerup_button.invoke()
+        elif key == KEY_MAPPING["restore_power"]:
+            restore_power_button.invoke()
+
+    root.bind("<Key>", key_pressed)
     root.mainloop()
 
-def start_control_panels():
-    ship_names = ["Enterprise", "Voyager", "Voq'leth", "Negh'Var"]
-    for i, ship_name in enumerate(ship_names):
-        threading.Thread(target=create_control_panel, args=(ship_name, i)).start()
+def start_control_panel(ship_name):
+    threading.Thread(target=create_control_panel, args=(ship_name, 0)).start()
