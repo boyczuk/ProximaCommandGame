@@ -63,11 +63,7 @@ def create_control_panel(ship_name, position_index):
 
     target_listbox.bind('<<ListboxSelect>>', on_select)
 
-    def fire_command():
-        if selected_target and " (target unavailable)" not in selected_target:
-            post_command(ship_name, f"FIRE {selected_target}")
-
-    fire_button = tk.Button(weapons_frame, text="Fire", command=fire_command)
+    fire_button = tk.Button(weapons_frame, text="Fire", command=lambda: post_command(ship_name, f"FIRE {selected_target}"))
     fire_button.pack()
 
     repair_weapons_button = tk.Button(weapons_frame, text="Repair Weapons", command=lambda: post_command(ship_name, "REPAIR weapons"))
@@ -180,6 +176,3 @@ def start_control_panels():
     ship_names = ["Enterprise", "Voyager", "Voq'leth", "Negh'Var"]
     for i, ship_name in enumerate(ship_names):
         threading.Thread(target=create_control_panel, args=(ship_name, i)).start()
-
-if __name__ == "__main__":
-    start_control_panels()
