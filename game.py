@@ -55,6 +55,7 @@ class Ship:
         self.collision_cooldown = 0
         self.collected_powerups = []
         self.collecting_powerup = False
+        self.selected_target = None
 
     def move(self, screen_width, screen_height):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -347,19 +348,18 @@ class Game:
                     ship.toggle_shields()
                 elif command.startswith("SELECT"):
                     _, target_name = command.split()
-                    self.select_target(target_name)
+                    self.select_target(ship_name, target_name)  # Call the updated select_target method
                 elif command.startswith("REPAIR"):
                     _, console = command.split()
-                    threading.Thread(target=ship.repair_console,
-                                     args=(console,)).start()
+                    threading.Thread(target=ship.repair_console, args=(console,)).start()
                 elif command == "RESTORE_POWER":
                     threading.Thread(target=ship.restore_power).start()
                 elif command.startswith("ACTIVATE"):
                     _, powerup_type = command.split()
                     self.apply_powerup_effect(ship, powerup_type)
                 elif command == "COLLECT_POWERUP":
-                    threading.Thread(
-                        target=self.collect_powerup, args=(ship,)).start()
+                    threading.Thread(target=self.collect_powerup, args=(ship,)).start()
+
 
     def collect_powerup(self, ship):
         with lock:
@@ -382,7 +382,9 @@ class Game:
         elif command == "RIGHT":
             ship.change_direction(-15)
 
-    def fire_weapon(self, attacking_ship, target_name):
+    def fire_weapon(self, attacking_ship, target_name=None):
+        if not target_name:
+            target_name = attacking_ship.selected_target  # Use the ship's selected target if no target is provided
         if attacking_ship.disabled_consoles["weapons"] or attacking_ship.power <= 0:
             print(f"{attacking_ship.name}'s weapons are disabled or no power!")
             return
@@ -394,15 +396,17 @@ class Game:
                 else:
                     print(f"Target {target_name} is out of range.")
             else:
-                print(
-                    f"Not enough power to fire weapons on {attacking_ship.name}.")
+                print(f"Not enough power to fire weapons on {attacking_ship.name}.")
 
-    def select_target(self, target_name):
-        if self.selected_target:
-            self.ships[self.selected_target].selected = False
-        if target_name in self.ships:
-            self.ships[target_name].selected = True
-            self.selected_target = target_name
+
+    def select_target(self, ship_name, target_name):
+        ship = self.ships.get(ship_name)
+        if ship:
+            if ship.selected_target:
+                self.ships[ship.selected_target].selected = False  # Unselect the previous target
+            ship.selected_target = target_name
+            self.ships[target_name].selected = True  # Set the new target
+
 
     def display_health(self, ship):
         font = pygame.font.Font(None, 36)

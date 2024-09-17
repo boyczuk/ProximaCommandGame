@@ -1,3 +1,6 @@
+import os
+from logging import root
+import sys
 import tkinter as tk
 from game import command_queue
 import threading
@@ -5,10 +8,25 @@ from pynput import keyboard
 import serial
 
 game_instance = None
-selected_target = ""  # Global variable to store the selected target
+
+def quit_game():
+    global root
+    root.quit()
+    root.destroy()
+    os._exit(0)
+
+
+
+def restart_game():
+    global root
+    root.quit()
+    root.destroy()
+    python = sys.executable
+    os.execl(python, f'"{python}"', *sys.argv)
+
 
 # Initialize Serial Connection
-#ser = serial.Serial('COM3', 9600)  # Replace 'COM3' with your actual COM port
+#ser = serial.Serial('COM3', 9600)  # Replace with actual COM port
 
 # Function to post commands to the game
 def post_command(ship, command):
@@ -23,7 +41,6 @@ def post_command(ship, command):
     root.after(50, check_serial)  # Continuously check the serial port every 50ms
 """
 def update_target_list(ship_name, target_listbox, radius=100):
-    global selected_target
     target_listbox.delete(0, tk.END)
     if game_instance:
         targetable_enemies = game_instance.get_targetable_enemies(ship_name, radius)
@@ -35,14 +52,20 @@ def update_target_list(ship_name, target_listbox, radius=100):
                 display_name += " (target unavailable)"
             target_listbox.insert(tk.END, display_name)
 
-        for i in range(target_listbox.size()):
-            if target_listbox.get(i).startswith(selected_target):
-                target_listbox.selection_set(i)
-                break
+        current_ship = game_instance.ships[ship_name]
+        selected_target = current_ship.selected_target
+
+        # Check if selected_target is None before attempting to call startswith
+        if selected_target:
+            for i in range(target_listbox.size()):
+                if target_listbox.get(i).startswith(selected_target):
+                    target_listbox.selection_set(i)
+                    break
+
+
 
 def create_control_panel(ship_name, position_index):
-    global selected_target
-
+    global root
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
@@ -70,18 +93,24 @@ def create_control_panel(ship_name, position_index):
     target_listbox.pack()
 
     def on_select(evt):
-        global selected_target
         w = evt.widget
         if w.curselection():
             index = int(w.curselection()[0])
             selected_target = w.get(index).split()[0]
+            current_ship = game_instance.ships[ship_name]
+            current_ship.selected_target = selected_target  # Set selected target for this ship
             post_command(ship_name, f"SELECT {selected_target}")
+
 
     target_listbox.bind('<<ListboxSelect>>', on_select)
 
     def fire_command():
+        current_ship = game_instance.ships[ship_name]  # Get the ship instance
+        selected_target = current_ship.selected_target  # Get the selected target for this ship
+
         if selected_target and " (target unavailable)" not in selected_target:
             post_command(ship_name, f"FIRE {selected_target}")
+
 
     fire_button = tk.Button(weapons_frame, text="Fire", command=fire_command)
     fire_button.pack()
@@ -222,6 +251,14 @@ def create_control_panel(ship_name, position_index):
     root.bind("<Key>", key_pressed)
 
     # check_serial()
+    
+    # Quit Button
+    quit_button = tk.Button(root, text="Quit", command=quit_game)
+    quit_button.pack(side=tk.BOTTOM, fill=tk.X)
+
+    # Restart Button
+    restart_button = tk.Button(root, text="Restart", command=restart_game)
+    restart_button.pack(side=tk.BOTTOM, fill=tk.X)
 
     root.mainloop()
 
