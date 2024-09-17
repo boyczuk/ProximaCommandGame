@@ -6,7 +6,10 @@ import time
 import random
 import threading
 
+lock = threading.Lock()
+
 command_queue = Queue()
+
 
 class PowerUp:
     def __init__(self, type, position):
@@ -24,6 +27,7 @@ class PowerUp:
             color = (0, 255, 0)
         pygame.draw.rect(screen, color, self.rect)
 
+
 class Ship:
     def __init__(self, name, team, position, facing, speed):
         self.name = name
@@ -39,7 +43,8 @@ class Ship:
         self.rect = pygame.Rect(position[0], position[1], 20, 20)
         self.selected = False
         self.deactivated = False
-        self.disabled_consoles = {"helm": False, "shields": False, "weapons": False}
+        self.disabled_consoles = {"helm": False,
+                                  "shields": False, "weapons": False}
         self.repairing = False
         self.repair_cooldowns = {"helm": 0, "shields": 0, "weapons": 0}
         self.power = 100
@@ -59,7 +64,8 @@ class Ship:
             if self.consume_power(power_cost):
                 rad = math.radians(self.facing)
                 dx = self.max_speed * self.speed * math.cos(rad) / 5
-                dy = -self.max_speed * math.sin(rad) * self.speed / 5  # negative because Pygame's y-axis is inverted
+                # negative because Pygame's y-axis is inverted
+                dy = -self.max_speed * math.sin(rad) * self.speed / 5
                 new_x = self.position[0] + dx
                 new_y = self.position[1] + dy
 
@@ -67,22 +73,24 @@ class Ship:
                 if 0 <= new_x <= screen_width - 20 and 0 <= new_y <= screen_height - 20:
                     self.position[0] = new_x
                     self.position[1] = new_y
-                    self.rect.update(self.position[0], self.position[1], 20, 20)
+                    self.rect.update(
+                        self.position[0], self.position[1], 20, 20)
 
     def distance_to(self, other_ship):
         return math.sqrt((self.position[0] - other_ship.position[0]) ** 2 + (self.position[1] - other_ship.position[1]) ** 2)
 
     def decrease_health(self, damage):
-        if self.shields_up:
-            print(f"{self.name} was hit but shields absorbed the damage!")
-        else:
-            if self.health > 0:
-                self.health -= damage
-                print(f"{self.name} has been hit! Health: {self.health}")
-                if self.health <= 0:
-                    self.deactivate()
-                else:
-                    self.disable_random_console()
+        with lock:
+            if self.shields_up:
+                print(f"{self.name} was hit but shields absorbed the damage!")
+            else:
+                if self.health > 0:
+                    self.health -= damage
+                    print(f"{self.name} has been hit! Health: {self.health}")
+                    if self.health <= 0:
+                        self.deactivate()
+                    else:
+                        self.disable_random_console()
 
     def change_direction(self, angle):
         if self.deactivated or self.disabled_consoles["helm"] or self.power <= 0:
@@ -91,24 +99,26 @@ class Ship:
             self.facing = (self.facing + angle) % 360
 
     def toggle_shields(self):
-        if self.deactivated or self.disabled_consoles["shields"] or self.power <= 0:
-            return
-        current_time = time.time()
-        if not self.shield_cooldown:
-            if not self.shields_up:
-                if self.consume_power(3):
-                    self.shields_up = True
-                    self.shield_raised_time = current_time
-                    self.shield_cooldown = True  
-            else:
-                self.shields_up = False
+        with lock:
+            if self.deactivated or self.disabled_consoles["shields"] or self.power <= 0:
+                return
+            current_time = time.time()
+            if not self.shield_cooldown:
+                if not self.shields_up:
+                    if self.consume_power(3):
+                        self.shields_up = True
+                        self.shield_raised_time = current_time
+                        self.shield_cooldown = True  
+                else:
+                    self.shields_up = False
+
 
     def update_shields(self):
         current_time = time.time()
-        if self.shields_up and current_time - self.shield_raised_time >= 3: 
+        if self.shields_up and current_time - self.shield_raised_time >= 3:
             self.shields_up = False
         if self.shield_cooldown and not self.shields_up:
-            if current_time - self.shield_raised_time >= 8: 
+            if current_time - self.shield_raised_time >= 8:
                 self.shield_cooldown = False
 
     def disable_random_console(self):
@@ -119,21 +129,21 @@ class Ship:
                 print(f"{self.name} had its {console} console disabled!")
 
     def repair_console(self, console):
-        current_time = time.time()
-        if self.disabled_consoles[console] and not self.repairing and current_time - self.repair_cooldowns[console] >= 60:
-            self.repairing = True
-            print(f"Repairing {console} console on {self.name}...")
-            if self.consume_power(5):
-                repair_time = 3 / self.repair_rate_multiplier  # Adjust repair time based on multiplier
-                time.sleep(repair_time)
-                self.disabled_consoles[console] = False
-                self.health += 1
-                self.repair_cooldowns[console] = current_time
+        with lock:
+            current_time = time.time()
+            if self.disabled_consoles[console] and not self.repairing and current_time - self.repair_cooldowns[console] >= 60:
+                self.repairing = True
+                print(f"Repairing {console} console on {self.name}...")
+                if self.consume_power(5):
+                    repair_time = 3 / self.repair_rate_multiplier  # Adjust repair time based on multiplier
+                    time.sleep(repair_time)
+                    self.disabled_consoles[console] = False
+                    self.health += 1
+                    self.repair_cooldowns[console] = current_time
+                    print(f"{console} console on {self.name} has been repaired and health restored!")
+                else:
+                    print(f"Not enough power to repair {console} console on {self.name}.")
                 self.repairing = False
-                print(f"{console} console on {self.name} has been repaired and health restored!")
-            else:
-                self.repairing = False
-                print(f"Not enough power to repair {console} console on {self.name}.")
 
     def fire_weapon(self, target_ship):
         if self.torpedo_powerup:
@@ -143,19 +153,23 @@ class Ship:
             target_ship.decrease_health(1)
 
     def restore_power(self):
-        if not self.power_cooldown:
-            print(f"Restoring power on {self.name}...")
-            self.power = self.max_power
-            self.power_cooldown = True
-            time.sleep(5)
-            self.power_cooldown = False
-            print(f"Power restored on {self.name}.")
+        with lock:
+            if not self.power_cooldown:
+                print(f"Restoring power on {self.name}...")
+                self.power = self.max_power
+                self.power_cooldown = True
+                time.sleep(5)
+                self.power_cooldown = False
+                print(f"Power restored on {self.name}.")
+
 
     def consume_power(self, amount):
-        if self.power >= amount:
-            self.power -= amount
-            return True
-        return False
+        with lock:
+            if self.power >= amount:
+                self.power -= amount
+                return True
+            return False
+
 
     def deactivate(self):
         self.deactivated = True
@@ -165,16 +179,19 @@ class Ship:
 
     def draw(self, screen):
         if self.deactivated:
-            color = (100, 100, 100)  
+            color = (100, 100, 100)
         else:
             color = (0, 255, 0) if self.team == "green" else (0, 0, 255)
         pygame.draw.rect(screen, color, self.rect)
 
-        # Draw the facing triangle 
+        # Draw the facing triangle
         rad = math.radians(self.facing)
-        tip = (self.position[0] + 10 * math.cos(rad), self.position[1] - 10 * math.sin(rad))
-        left = (self.position[0] + 5 * math.cos(rad + 2.5), self.position[1] - 5 * math.sin(rad + 2.5))
-        right = (self.position[0] + 5 * math.cos(rad - 2.5), self.position[1] - 5 * math.sin(rad - 2.5))
+        tip = (self.position[0] + 10 * math.cos(rad),
+               self.position[1] - 10 * math.sin(rad))
+        left = (self.position[0] + 5 * math.cos(rad + 2.5),
+                self.position[1] - 5 * math.sin(rad + 2.5))
+        right = (self.position[0] + 5 * math.cos(rad - 2.5),
+                 self.position[1] - 5 * math.sin(rad - 2.5))
         pygame.draw.polygon(screen, (255, 255, 0), [tip, left, right])
 
         if self.selected:
@@ -182,6 +199,7 @@ class Ship:
 
         if self.shields_up:
             pygame.draw.circle(screen, (0, 0, 255), self.rect.center, 25, 2)
+
 
 class Game:
     def __init__(self):
@@ -196,14 +214,15 @@ class Game:
 
     def initialize_pygame(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height)) 
+        self.screen = pygame.display.set_mode(
+            (self.screen_width, self.screen_height))
         self.clock = pygame.time.Clock()
 
     def create_ships(self):
-        ship1 = Ship("Enterprise", "green", (100, 50), 90, 0) 
-        ship2 = Ship("Voyager", "green", (100, 75), 270, 0)  
-        ship3 = Ship("Voq'leth", "blue", (200, 150), 90, 0) 
-        ship4 = Ship("Negh'Var", "blue", (200, 100), 270, 0) 
+        ship1 = Ship("Enterprise", "green", (100, 50), 90, 0)
+        ship2 = Ship("Voyager", "green", (100, 75), 270, 0)
+        ship3 = Ship("Voq'leth", "blue", (200, 150), 90, 0)
+        ship4 = Ship("Negh'Var", "blue", (200, 100), 270, 0)
         self.add_ship(ship1)
         self.add_ship(ship2)
         self.add_ship(ship3)
@@ -217,7 +236,8 @@ class Game:
         num_powerups = random.randint(1, 5)
         for _ in range(num_powerups):
             powerup_type = random.choice(powerup_types)
-            position = (random.randint(0, self.screen_width - 20), random.randint(0, self.screen_height - 20))
+            position = (random.randint(0, self.screen_width - 20),
+                        random.randint(0, self.screen_height - 20))
             powerup = PowerUp(powerup_type, position)
             self.powerups.append(powerup)
 
@@ -234,7 +254,6 @@ class Game:
         if current_time % 60 < 0.02:  # Roughly every 60 seconds
             self.powerups.clear()
             self.create_powerups()
-            
 
     def apply_powerup_effect(self, ship, powerup_type):
         if powerup_type == "power_cell":
@@ -245,26 +264,20 @@ class Game:
         elif powerup_type == "engineer":
             ship.repair_rate_multiplier = 2
 
-
     def push_ships_apart(self, ship1, ship2):
-        # Calculate the angle between the two ships
         dx = ship2.position[0] - ship1.position[0]
         dy = ship2.position[1] - ship1.position[1]
         angle = math.atan2(dy, dx)
 
-        # Push ships in opposite directions
-        push_distance = 5  # Adjust this value for stronger or weaker push effect
+        push_distance = 5
         ship1.position[0] -= push_distance * math.cos(angle)
         ship1.position[1] -= push_distance * math.sin(angle)
         ship2.position[0] += push_distance * math.cos(angle)
         ship2.position[1] += push_distance * math.sin(angle)
 
-        # Update the rect positions for collision detection
         ship1.rect.update(ship1.position[0], ship1.position[1], 20, 20)
         ship2.rect.update(ship2.position[0], ship2.position[1], 20, 20)
 
-
-    # In check_ship_collisions():
     def check_ship_collisions(self):
         current_time = time.time()
         ships = list(self.ships.values())
@@ -277,9 +290,10 @@ class Game:
                             ships[j].decrease_health(1)
                             ships[i].collision_cooldown = current_time
                             ships[j].collision_cooldown = current_time
-                            print(f"Collision detected between {ships[i].name} and {ships[j].name}")
-                            self.push_ships_apart(ships[i], ships[j])  # Apply the push effect
-
+                            print(
+                                f"Collision detected between {ships[i].name} and {ships[j].name}")
+                            # Apply the push effect
+                            self.push_ships_apart(ships[i], ships[j])
 
     def is_valid_move(self, ship, new_position):
         test_rect = pygame.Rect(new_position[0], new_position[1], 20, 20)
@@ -305,9 +319,9 @@ class Game:
                     sys.exit()
             self.screen.fill((10, 10, 40))
             for ship in self.ships.values():
-                ship.move(self.screen_width, self.screen_height) 
-                ship.update_shields()  
-                ship.draw(self.screen) 
+                ship.move(self.screen_width, self.screen_height)
+                ship.update_shields()
+                ship.draw(self.screen)
                 self.display_health(ship)
             for powerup in self.powerups:
                 if not powerup.collected:
@@ -321,7 +335,7 @@ class Game:
         while not command_queue.empty():
             ship_name, command = command_queue.get()
             ship = self.ships.get(ship_name)
-            if ship and not ship.deactivated: 
+            if ship and not ship.deactivated:
                 if command.startswith("FIRE"):
                     _, target_name = command.split()
                     self.fire_weapon(ship, target_name)
@@ -336,19 +350,23 @@ class Game:
                     self.select_target(target_name)
                 elif command.startswith("REPAIR"):
                     _, console = command.split()
-                    threading.Thread(target=ship.repair_console, args=(console,)).start()
+                    threading.Thread(target=ship.repair_console,
+                                     args=(console,)).start()
                 elif command == "RESTORE_POWER":
                     threading.Thread(target=ship.restore_power).start()
                 elif command.startswith("ACTIVATE"):
                     _, powerup_type = command.split()
                     self.apply_powerup_effect(ship, powerup_type)
                 elif command == "COLLECT_POWERUP":
-                    threading.Thread(target=self.collect_powerup, args=(ship,)).start()
+                    threading.Thread(
+                        target=self.collect_powerup, args=(ship,)).start()
 
     def collect_powerup(self, ship):
-        ship.collecting_powerup = True
-        time.sleep(3)  # Allow collecting for 3 seconds
-        ship.collecting_powerup = False
+        with lock:
+            ship.collecting_powerup = True
+            time.sleep(3)  # Allow collecting for 3 seconds
+            ship.collecting_powerup = False
+
 
     def adjust_speed(self, ship, command):
         if command == "STOP":
@@ -360,7 +378,7 @@ class Game:
 
     def change_direction(self, ship, command):
         if command == "LEFT":
-            ship.change_direction(15) 
+            ship.change_direction(15)
         elif command == "RIGHT":
             ship.change_direction(-15)
 
@@ -376,7 +394,8 @@ class Game:
                 else:
                     print(f"Target {target_name} is out of range.")
             else:
-                print(f"Not enough power to fire weapons on {attacking_ship.name}.")
+                print(
+                    f"Not enough power to fire weapons on {attacking_ship.name}.")
 
     def select_target(self, target_name):
         if self.selected_target:
