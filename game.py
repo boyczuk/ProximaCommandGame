@@ -234,6 +234,7 @@ class Game:
         if current_time % 60 < 0.02:  # Roughly every 60 seconds
             self.powerups.clear()
             self.create_powerups()
+            
 
     def apply_powerup_effect(self, ship, powerup_type):
         if powerup_type == "power_cell":
@@ -244,6 +245,26 @@ class Game:
         elif powerup_type == "engineer":
             ship.repair_rate_multiplier = 2
 
+
+    def push_ships_apart(self, ship1, ship2):
+        # Calculate the angle between the two ships
+        dx = ship2.position[0] - ship1.position[0]
+        dy = ship2.position[1] - ship1.position[1]
+        angle = math.atan2(dy, dx)
+
+        # Push ships in opposite directions
+        push_distance = 5  # Adjust this value for stronger or weaker push effect
+        ship1.position[0] -= push_distance * math.cos(angle)
+        ship1.position[1] -= push_distance * math.sin(angle)
+        ship2.position[0] += push_distance * math.cos(angle)
+        ship2.position[1] += push_distance * math.sin(angle)
+
+        # Update the rect positions for collision detection
+        ship1.rect.update(ship1.position[0], ship1.position[1], 20, 20)
+        ship2.rect.update(ship2.position[0], ship2.position[1], 20, 20)
+
+
+    # In check_ship_collisions():
     def check_ship_collisions(self):
         current_time = time.time()
         ships = list(self.ships.values())
@@ -257,6 +278,8 @@ class Game:
                             ships[i].collision_cooldown = current_time
                             ships[j].collision_cooldown = current_time
                             print(f"Collision detected between {ships[i].name} and {ships[j].name}")
+                            self.push_ships_apart(ships[i], ships[j])  # Apply the push effect
+
 
     def is_valid_move(self, ship, new_position):
         test_rect = pygame.Rect(new_position[0], new_position[1], 20, 20)

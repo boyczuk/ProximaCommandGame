@@ -1,29 +1,29 @@
 import tkinter as tk
 from game import command_queue
 import threading
+from pynput import keyboard
+import serial
 
 game_instance = None
+selected_target = ""  # Global variable to store the selected target
 
-# Connect to external inputs here
-KEY_MAPPING = {
-    "fire": "space",
-    "raise_shields": "r",
-    "stop": "s",
-    "partial_speed": "w",
-    "full_speed": "f",
-    "turn_left": "a",
-    "turn_right": "d",
-    "repair_helm": "h",
-    "repair_shields": "e",
-    "repair_weapons": "q",
-    "collect_powerup": "c",
-    "restore_power": "p"
-}
+# Initialize Serial Connection
+#ser = serial.Serial('COM3', 9600)  # Replace 'COM3' with your actual COM port
 
+# Function to post commands to the game
 def post_command(ship, command):
     command_queue.put((ship, command))
 
-def update_target_list(ship_name, target_listbox, selected_target, radius=100):
+"""def check_serial():
+    if ser.in_waiting > 0:
+        line = ser.readline().decode('utf-8').strip()
+        if line == "PARTIAL":
+            post_command(ship_name, "PARTIAL")
+        # Add more checks as needed
+    root.after(50, check_serial)  # Continuously check the serial port every 50ms
+"""
+def update_target_list(ship_name, target_listbox, radius=100):
+    global selected_target
     target_listbox.delete(0, tk.END)
     if game_instance:
         targetable_enemies = game_instance.get_targetable_enemies(ship_name, radius)
@@ -41,6 +41,8 @@ def update_target_list(ship_name, target_listbox, selected_target, radius=100):
                 break
 
 def create_control_panel(ship_name, position_index):
+    global selected_target
+
     root = tk.Tk()
     root.title(f"Control Panel - {ship_name}")
 
@@ -49,7 +51,7 @@ def create_control_panel(ship_name, position_index):
     screen_height = root.winfo_screenheight()
     window_width = 400
     window_height = 600
-    columns = 2  
+    columns = 2
     x = (position_index % columns) * window_width
     y = (position_index // columns) * window_height
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -67,10 +69,8 @@ def create_control_panel(ship_name, position_index):
     target_listbox = tk.Listbox(weapons_frame)
     target_listbox.pack()
 
-    selected_target = ""
-
     def on_select(evt):
-        nonlocal selected_target
+        global selected_target
         w = evt.widget
         if w.curselection():
             index = int(w.curselection()[0])
@@ -186,7 +186,7 @@ def create_control_panel(ship_name, position_index):
     root.after(1000, update_restore_power_button)
 
     def update_targets():
-        update_target_list(ship_name, target_listbox, selected_target)
+        update_target_list(ship_name, target_listbox)
         root.after(1000, update_targets)  # Schedule next update
 
     root.after(1000, update_targets)  # Start the first update
@@ -194,32 +194,35 @@ def create_control_panel(ship_name, position_index):
     # Key bindings
     def key_pressed(event):
         key = event.keysym.lower()
-        if key == KEY_MAPPING["fire"]:
+        if key == 'space':
             fire_command()
-        elif key == KEY_MAPPING["raise_shields"]:
+        elif key == 'r':
             shield_button.invoke()
-        elif key == KEY_MAPPING["stop"]:
+        elif key == 's':
             stop_button.invoke()
-        elif key == KEY_MAPPING["partial_speed"]:
+        elif key == 'w':
             partial_speed_button.invoke()
-        elif key == KEY_MAPPING["full_speed"]:
+        elif key == 'f':
             full_speed_button.invoke()
-        elif key == KEY_MAPPING["turn_left"]:
+        elif key == 'a':
             left_button.invoke()
-        elif key == KEY_MAPPING["turn_right"]:
+        elif key == 'd':
             right_button.invoke()
-        elif key == KEY_MAPPING["repair_helm"]:
+        elif key == 'h':
             repair_helm_button.invoke()
-        elif key == KEY_MAPPING["repair_shields"]:
+        elif key == 'e':
             repair_shields_button.invoke()
-        elif key == KEY_MAPPING["repair_weapons"]:
+        elif key == 'q':
             repair_weapons_button.invoke()
-        elif key == KEY_MAPPING["collect_powerup"]:
+        elif key == 'c':
             collect_powerup_button.invoke()
-        elif key == KEY_MAPPING["restore_power"]:
+        elif key == 'p':
             restore_power_button.invoke()
 
     root.bind("<Key>", key_pressed)
+
+    # check_serial()
+
     root.mainloop()
 
 def start_control_panel(ship_name):
