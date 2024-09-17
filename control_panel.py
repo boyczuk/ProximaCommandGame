@@ -122,8 +122,12 @@ def create_control_panel(ship_name, position_index):
         ship = game_instance.ships[ship_name]
         state = "normal" if not ship.deactivated and not ship.disabled_consoles["weapons"] else "disabled"
         fire_button.config(state=state)
-        repair_weapons_button.config(state=state)
+        
+        # Repair button is always enabled
+        repair_weapons_button.config(state="normal")
+        
         root.after(1000, update_weapons_buttons)
+
 
     root.after(1000, update_weapons_buttons)
 
@@ -138,8 +142,12 @@ def create_control_panel(ship_name, position_index):
         ship = game_instance.ships[ship_name]
         state = "normal" if not ship.deactivated and not ship.disabled_consoles["shields"] else "disabled"
         shield_button.config(state=state)
-        repair_shields_button.config(state=state)
+        
+        # Repair button is always enabled
+        repair_shields_button.config(state="normal")
+        
         root.after(1000, update_science_buttons)
+
 
     root.after(1000, update_science_buttons)
 
@@ -166,8 +174,12 @@ def create_control_panel(ship_name, position_index):
         full_speed_button.config(state=state)
         left_button.config(state=state)
         right_button.config(state=state)
-        repair_helm_button.config(state=state)
+        
+        # Repair button is always enabled
+        repair_helm_button.config(state="normal")
+        
         root.after(1000, update_helm_buttons)
+
 
     root.after(1000, update_helm_buttons)
 
