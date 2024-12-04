@@ -1,3 +1,6 @@
+### Proxima Command
+This project was a proof-of-concept software designed to work with CircuitPython-coded Raspberry PIs. The overall goal was to have 4-8 players in two physically separate rooms as teams each controlling one ship in a starship simulation battlefield. The code in this repository is designed to be a foundation or general structure to manage the game state as well as the individual actions of the players on the hardware consoles (controlled with Raspberry PIs).
+
 ### Run app
 `python.exe main.py`
 
